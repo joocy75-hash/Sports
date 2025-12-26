@@ -7,22 +7,9 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - '.gitignore'
 
   # 수동 배포 트리거
   workflow_dispatch:
-    inputs:
-      deploy_type:
-        description: '배포 유형'
-        required: true
-        default: 'update'
-        type: choice
-        options:
-          - update
-          - restart
 
 env:
   SERVER_IP: 5.161.112.248
@@ -61,7 +48,7 @@ jobs:
             --exclude='*.log' \
             --exclude='.env' \
             --exclude='node_modules' \
-            --exclude='frontend' \
+            --exclude='frontend/node_modules' \
             --exclude='deployment' \
             --exclude='deepseek_env' \
             --exclude='.DS_Store' \
@@ -69,31 +56,24 @@ jobs:
             --exclude='archive' \
             ./ "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
 
-      # 4. Docker 이미지 빌드 및 서비스 재시작
-      - name: Build and restart service
+      # 4. Docker 이미지 빌드
+      - name: Build Docker image
         run: |
-          ssh "$SERVER_USER@$SERVER_IP" << 'EOF'
-            cd /root/sports-analysis
+          ssh "$SERVER_USER@$SERVER_IP" "cd $REMOTE_DIR && docker compose build"
 
-            # 이미지 빌드
-            docker compose build
+      # 5. 서비스 재시작
+      - name: Restart service
+        run: |
+          ssh "$SERVER_USER@$SERVER_IP" "cd $REMOTE_DIR && docker compose down || true"
+          ssh "$SERVER_USER@$SERVER_IP" "cd $REMOTE_DIR && docker compose up -d"
 
-            # 서비스 재시작
-            docker compose down || true
-            docker compose up -d
-
-            # 상태 확인
-            sleep 5
-            docker compose ps
-          EOF
-
-      # 5. 헬스체크
-      - name: Health check
+      # 6. 상태 확인
+      - name: Check service status
         run: |
           sleep 10
-          ssh "$SERVER_USER@$SERVER_IP" "docker compose -f /root/sports-analysis/docker-compose.yml ps --format json" | jq -e '.[0].State == "running"'
+          ssh "$SERVER_USER@$SERVER_IP" "cd $REMOTE_DIR && docker compose ps"
 
-      # 6. 텔레그램 알림 (성공)
+      # 7. 텔레그램 알림 (성공)
       - name: Notify Telegram (Success)
         if: success()
         run: |
@@ -102,17 +82,13 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT}" \
             -d parse_mode="Markdown" \
-            -d text="✅ *스포츠 분석 배포 성공*
-
-📦 커밋: \`${COMMIT_SHORT}\`
-👤 배포자: ${DEPLOYER}
-🕐 시간: ${DEPLOY_TIME}"
+            -d text="✅ *스포츠 분석 배포 성공*%0A%0A📦 커밋: \`${COMMIT_SHORT}\`%0A👤 배포자: ${DEPLOYER}%0A🕐 시간: ${DEPLOY_TIME}"
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
           DEPLOYER: ${{ github.actor }}
 
-      # 7. 텔레그램 알림 (실패)
+      # 8. 텔레그램 알림 (실패)
       - name: Notify Telegram (Failure)
         if: failure()
         run: |
@@ -121,11 +97,7 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT}" \
             -d parse_mode="Markdown" \
-            -d text="❌ *스포츠 분석 배포 실패*
-
-📦 커밋: \`${COMMIT_SHORT}\`
-👤 배포자: ${DEPLOYER}
-🔗 [로그 확인](${LOG_URL})"
+            -d text="❌ *스포츠 분석 배포 실패*%0A%0A📦 커밋: \`${COMMIT_SHORT}\`%0A👤 배포자: ${DEPLOYER}%0A🔗 [로그 확인](${LOG_URL})"
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
