@@ -1,0 +1,43 @@
+{
+  "test_date": "2025-12-23T03:09:44.313267",
+  "test_type": "integration_test",
+  "individual_modules": {
+    "upset_detector": true,
+    "multi_marking_optimizer": true,
+    "marking_generator": true,
+    "telegram_notifier": true
+  },
+  "integrated_pipeline": {
+    "success": true,
+    "result_summary": {
+      "round_id": "TEST_123",
+      "total_matches": 0,
+      "summary": {
+        "status": "no_matches",
+        "upset_count": 0,
+        "multi_marking_count": 0,
+        "final_markings": {
+          "round_id": "TEST_123",
+          "final_markings": [],
+          "summary": {
+            "total_games": 0,
+            "single_count": 0,
+            "double_count": 0,
+            "triple_count": 0,
+            "upset_count": 0,
+            "avg_confidence": 0,
+            "high_confidence_singles": 0,
+            "multi_marking_ratio": 0,
+            "confidence_breakdown": {
+              "high": 0,
+              "medium": 0,
+              "low": 0
+            }
+          },
+          "generated_at": "2025-12-23T03:09:44.312982"
+        }
+      }
+    }
+  },
+  "overall_pass_rate": 1.0
+}

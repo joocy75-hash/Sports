@@ -1,0 +1,235 @@
+# Group C: AI Trading Platform
+# AI 기반 자동매매 플랫폼 (완전 독립 네트워크)
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 1. AI Trading Platform (메인 애플리케이션)
+  # ============================================
+  ai-platform:
+    build:
+      context: ./ai_platform
+      dockerfile: Dockerfile
+    container_name: ai_trading_platform
+    restart: always
+
+    # 리소스 제한 (2GB RAM, 1 CPU) - 우선순위 높음
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+          cpus: '1.0'
+        reservations:
+          memory: 1024M
+          cpus: '0.5'
+
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONUNBUFFERED=1
+      - NODE_ENV=production
+      # 데이터베이스
+      - DATABASE_URL=postgresql://ai_user:${AI_DB_PASSWORD}@ai-db:5432/ai_trading
+      - REDIS_URL=redis://ai-redis:6379/0
+      # AI API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # 거래소 API (예시)
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_SECRET=${BINANCE_SECRET:-}
+      - BYBIT_API_KEY=${BYBIT_API_KEY:-}
+      - BYBIT_SECRET=${BYBIT_SECRET:-}
+      # Telegram 알림
+      - TELEGRAM_BOT_TOKEN=${AI_TELEGRAM_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN}}
+      - TELEGRAM_CHAT_ID=${AI_TELEGRAM_CHAT_ID:-${TELEGRAM_CHAT_ID}}
+
+    volumes:
+      - ai_data:/app/data
+      - ai_logs:/app/logs
+      - ai_models:/app/models
+
+    ports:
+      - "8090:8000"
+
+    networks:
+      - ai_trading_net
+
+    depends_on:
+      ai-db:
+        condition: service_healthy
+      ai-redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # 2. PostgreSQL Database (AI 전용)
+  # ============================================
+  ai-db:
+    image: postgres:16-alpine
+    container_name: ai_trading_db
+    restart: always
+
+    # 리소스 제한 (512MB)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+
+    environment:
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=${AI_DB_PASSWORD}
+      - POSTGRES_DB=ai_trading
+      - TZ=Asia/Seoul
+
+    volumes:
+      - ai_postgres_data:/var/lib/postgresql/data
+      - ./ai_platform/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    networks:
+      - ai_trading_net
+
+    # 외부 접근 차단 (내부 네트워크만)
+    # ports:
+    #   - "5433:5432"  # 필요시 활성화
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_trading"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # 3. Redis Cache (세션, 캐시, 작업 큐)
+  # ============================================
+  ai-redis:
+    image: redis:7-alpine
+    container_name: ai_trading_redis
+    restart: always
+
+    # 리소스 제한 (128MB)
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+        reservations:
+          memory: 64M
+
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
+
+    volumes:
+      - ai_redis_data:/data
+
+    networks:
+      - ai_trading_net
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ============================================
+  # 4. Celery Worker (백그라운드 작업)
+  # ============================================
+  ai-worker:
+    build:
+      context: ./ai_platform
+      dockerfile: Dockerfile
+    container_name: ai_trading_worker
+    restart: always
+    command: celery -A app.celery worker --loglevel=info --concurrency=2
+
+    # 리소스 제한 (512MB, CPU 공유)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://ai_user:${AI_DB_PASSWORD}@ai-db:5432/ai_trading
+      - REDIS_URL=redis://ai-redis:6379/0
+      - CELERY_BROKER_URL=redis://ai-redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://ai-redis:6379/2
+      # API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_SECRET=${BINANCE_SECRET:-}
+
+    volumes:
+      - ai_data:/app/data
+      - ai_logs:/app/logs
+
+    networks:
+      - ai_trading_net
+
+    depends_on:
+      - ai-db
+      - ai-redis
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+# ============================================
+# 네트워크 정의 (완전 격리)
+# ============================================
+networks:
+  ai_trading_net:
+    driver: bridge
+    # 다른 그룹과 완전 격리
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+# ============================================
+# 볼륨 정의 (영속 데이터)
+# ============================================
+volumes:
+  ai_postgres_data:
+    driver: local
+  ai_redis_data:
+    driver: local
+  ai_data:
+    driver: local
+  ai_logs:
+    driver: local
+  ai_models:
+    driver: local

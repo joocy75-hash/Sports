@@ -1,0 +1,68 @@
+# Proto 14게임 AI 분석 시스템
+# 스포츠 분석 자동화 (축구 승무패 + 농구 승5패)
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 스포츠 분석 시스템
+  # ============================================
+  sports-analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sports_analysis
+    restart: always
+
+    # 리소스 제한 (1GB RAM, 0.5 CPU)
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+    # 환경 변수 (파일에서 로드)
+    env_file:
+      - .env
+
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONUNBUFFERED=1
+
+    # 볼륨 마운트
+    volumes:
+      # 상태 저장 (예측, 결과, 캐시)
+      - sports_state:/app/.state
+      # 로그
+      - sports_logs:/app/logs
+
+    # 포트 (API 서버 사용 시)
+    ports:
+      - "5001:8000"
+
+    # 헬스체크
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+
+    # 로깅 설정
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+# ============================================
+# 볼륨 정의
+# ============================================
+volumes:
+  sports_state:
+    driver: local
+  sports_logs:
+    driver: local

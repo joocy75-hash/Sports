@@ -1,0 +1,151 @@
+.value-bet-card {
+    padding: var(--space-5);
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.9), rgba(17, 24, 39, 0.95));
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.value-bet-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.value-bet-card.strong_bet {
+    border-left: 4px solid var(--success-500);
+}
+
+.value-bet-card.bet {
+    border-left: 4px solid var(--primary-500);
+}
+
+.value-bet-card.consider {
+    border-left: 4px solid var(--warning-500);
+}
+
+.value-bet-card.skip {
+    border-left: 4px solid var(--gray-500);
+}
+
+.value-bet-card.avoid {
+    border-left: 4px solid var(--danger-500);
+}
+
+.vb-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.vb-value {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--success-400);
+}
+
+.vb-match {
+    margin-bottom: var(--space-4);
+}
+
+.vb-teams {
+    display: block;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--gray-100);
+    margin-bottom: var(--space-1);
+}
+
+.vb-outcome {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+}
+
+.vb-odds {
+    padding: var(--space-4);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+}
+
+.odds-comparison {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+}
+
+.odds-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.odds-label {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.odds-value {
+    font-size: var(--text-xl);
+    font-weight: 700;
+}
+
+.odds-value.ai {
+    color: var(--primary-400);
+}
+
+.odds-value.official {
+    color: var(--success-400);
+}
+
+.odds-arrow {
+    font-size: var(--text-xl);
+    color: var(--gray-500);
+}
+
+.vb-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+    min-width: 50px;
+}
+
+.stat-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--gray-700);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.stat-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease-out;
+}
+
+.stat-value {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-300);
+    min-width: 45px;
+    text-align: right;
+}
+
+.stat-value.ev {
+    color: var(--success-400);
+}

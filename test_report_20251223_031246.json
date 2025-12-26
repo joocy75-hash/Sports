@@ -1,0 +1,316 @@
+{
+  "test_date": "2025-12-23T03:12:46.236930",
+  "test_type": "integration_test",
+  "individual_modules": {
+    "upset_detector": true,
+    "multi_marking_optimizer": true,
+    "marking_generator": true,
+    "telegram_notifier": true
+  },
+  "integrated_pipeline": {
+    "success": true,
+    "result_summary": {
+      "round_id": "TEST_123",
+      "total_matches": 14,
+      "summary": {
+        "total_matches": 14,
+        "high_confidence_matches": 0,
+        "value_bets_found": 39,
+        "avg_consensus": 0.0,
+        "best_combination": "💰 고가치 조합",
+        "expected_roi": 1432.3923,
+        "recommendation": "🔥 강력 추천! 예상 ROI 143239.2% (💰 고가치 조합)",
+        "upset_count": 0,
+        "multi_marking_count": 14,
+        "final_markings": {
+          "round_id": "TEST_123",
+          "final_markings": [
+            {
+              "game_no": 1,
+              "match_name": "맨체스터 시티 vs 첼시",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 2,
+              "match_name": "리버풀 vs 아스날",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 3,
+              "match_name": "바르셀로나 vs 레알 마드리드",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 4,
+              "match_name": "바이에른 뮌헨 vs 도르트문트",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 5,
+              "match_name": "파리 생제르맹 vs 마르세유",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 6,
+              "match_name": "유벤투스 vs 인터 밀란",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 7,
+              "match_name": "울버햄튼 vs 맨체스터 유나이티드",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 8,
+              "match_name": "레스터 시티 vs 토트넘",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 9,
+              "match_name": "AC 밀란 vs 나폴리",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 10,
+              "match_name": "아틀레티코 vs 세비야",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 11,
+              "match_name": "첼시 vs 레스터",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 12,
+              "match_name": "리옹 vs 모나코",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 13,
+              "match_name": "발렌시아 vs 빌바오",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            },
+            {
+              "game_no": 14,
+              "match_name": "베르더 브레멘 vs 프랑크푸르트",
+              "marking": [
+                "홈승",
+                "무승부",
+                "원정승"
+              ],
+              "marking_type": "triple",
+              "ai_consensus": "0/5 (0%)",
+              "confidence": 14,
+              "probabilities": {
+                "홈승": "33%",
+                "무승부": "33%",
+                "원정승": "33%"
+              },
+              "is_upset": false,
+              "reasoning": "3개 복수 (전체, 확실 적중)"
+            }
+          ],
+          "summary": {
+            "total_games": 14,
+            "single_count": 0,
+            "double_count": 0,
+            "triple_count": 14,
+            "upset_count": 0,
+            "avg_confidence": 14.0,
+            "high_confidence_singles": 0,
+            "multi_marking_ratio": 100.0,
+            "confidence_breakdown": {
+              "high": 0,
+              "medium": 0,
+              "low": 14
+            }
+          },
+          "generated_at": "2025-12-23T03:12:46.235629"
+        }
+      }
+    }
+  },
+  "overall_pass_rate": 1.0
+}

@@ -1,0 +1,473 @@
+.match-analysis-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* 헤더 */
+.analysis-header {
+    margin-bottom: 2rem;
+}
+
+.back-btn {
+    padding: 0.5rem 1rem;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 0.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1rem;
+}
+
+.back-btn:hover {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.match-title h1 {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.match-title .team {
+    color: #111827;
+}
+
+.match-title .team.home {
+    color: #10b981;
+}
+
+.match-title .team.away {
+    color: #ef4444;
+}
+
+.match-title .vs {
+    font-size: 1.25rem;
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.league-info {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* 추천 요약 */
+.recommendation-summary .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.summary-item {
+    text-align: center;
+}
+
+.summary-item .label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.summary-item .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.summary-item .value.large {
+    font-size: 2.5rem;
+    color: #3b82f6;
+}
+
+.summary-item .value.positive {
+    color: #10b981;
+}
+
+.summary-item .value.negative {
+    color: #ef4444;
+}
+
+.summary-item .confidence-badge {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.confidence-badge.high {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.confidence-badge.medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.confidence-badge.low {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* 확률 라벨 */
+.probability-labels {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.prob-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.prob-label .dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+}
+
+.prob-label .name {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.prob-label .value {
+    font-weight: 600;
+    color: #111827;
+}
+
+/* 통계 비교 */
+.stats-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.stats-table {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.stat-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.stat-row .home-value {
+    text-align: center;
+    font-weight: 700;
+    color: #10b981;
+}
+
+.stat-row .stat-name {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.stat-row .away-value {
+    text-align: center;
+    font-weight: 700;
+    color: #ef4444;
+}
+
+/* 폼 */
+.form-strings {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.form-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.form-item .team-name {
+    font-weight: 600;
+    min-width: 150px;
+}
+
+.form-badges {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.form-badge {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.form-badge.w {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.form-badge.d {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.form-badge.l {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* 상대전적 */
+.h2h-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.h2h-row {
+    display: grid;
+    grid-template-columns: 120px 80px 1fr;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.h2h-row .date {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.h2h-row .score {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.h2h-row .score .winner {
+    color: #10b981;
+}
+
+.h2h-row .score .separator {
+    color: #9ca3af;
+}
+
+.h2h-row .result {
+    text-align: right;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.h2h-row .result.home {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.h2h-row .result.away {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* AI 의견 */
+.ai-opinions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.opinion-card {
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #f9fafb;
+}
+
+.opinion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.opinion-header .provider {
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.opinion-header .confidence {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 0.25rem;
+    font-weight: 600;
+}
+
+.opinion-winner {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.opinion-winner strong {
+    color: #10b981;
+}
+
+.opinion-reasoning {
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+/* 심층 분석 */
+.deep-analysis p {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: #374151;
+}
+
+/* 배팅 추천 */
+.betting-recommendation {
+    background: linear-gradient(135deg, #f0f9ff 0%, #f9fafb 100%);
+    border: 2px solid #3b82f6;
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+
+.rec-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.rec-outcome .label,
+.rec-confidence .label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.rec-outcome .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.rec-confidence .confidence-bar {
+    width: 100%;
+    height: 1.5rem;
+    background: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.rec-confidence .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #3b82f6);
+    transition: width 0.5s ease;
+}
+
+.rec-confidence .value {
+    font-weight: 700;
+    color: #111827;
+}
+
+.rec-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ev-info .label {
+    color: #6b7280;
+    margin-right: 0.5rem;
+}
+
+.ev-info .value {
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.ev-info .value.positive {
+    color: #10b981;
+}
+
+.ev-info .value.negative {
+    color: #ef4444;
+}
+
+.bet-btn {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bet-btn:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .match-title h1 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .stats-comparison {
+        grid-template-columns: 1fr;
+    }
+
+    .rec-main {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .rec-footer {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .bet-btn {
+        width: 100%;
+    }
+
+    .ai-opinions {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,35 @@
+{
+  "test_id": "T-03",
+  "test_name": "E2E 테스트",
+  "date": "2025-12-21",
+  "timestamp": "01:24:31",
+  "results": {
+    "total_scenarios": 4,
+    "passed": 4,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "scenarios": [
+    {
+      "name": "대시보드 확인 및 경기 분석",
+      "status": "PASS",
+      "timestamp": "2025-12-21T01:24:31.227228"
+    },
+    {
+      "name": "AI 예측 및 토토 최적화",
+      "status": "PASS",
+      "timestamp": "2025-12-21T01:24:31.227230"
+    },
+    {
+      "name": "백테스팅 및 결과 확인",
+      "status": "PASS",
+      "timestamp": "2025-12-21T01:24:31.227231"
+    },
+    {
+      "name": "프론트엔드 주요 기능 접근",
+      "status": "PASS",
+      "timestamp": "2025-12-21T01:24:31.227232"
+    }
+  ],
+  "conclusion": "✅ E2E 테스트 완료"
+}

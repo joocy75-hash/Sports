@@ -1,0 +1,132 @@
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-8);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 15, 26, 0.9);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+}
+
+.loading-spinner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading.sm .loading-spinner {
+    width: 40px;
+    height: 40px;
+}
+
+.loading.md .loading-spinner {
+    width: 64px;
+    height: 64px;
+}
+
+.loading.lg .loading-spinner {
+    width: 96px;
+    height: 96px;
+}
+
+.spinner-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 3px solid transparent;
+    border-radius: 50%;
+    animation: spin 1.5s linear infinite;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top-color: var(--primary-500);
+    animation-delay: 0s;
+}
+
+.spinner-ring:nth-child(2) {
+    width: 80%;
+    height: 80%;
+    border-right-color: var(--success-500);
+    animation-delay: 0.15s;
+    animation-direction: reverse;
+}
+
+.spinner-ring:nth-child(3) {
+    width: 60%;
+    height: 60%;
+    border-bottom-color: var(--warning-500);
+    animation-delay: 0.3s;
+}
+
+.spinner-center {
+    font-size: 1.5rem;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.loading.sm .spinner-center {
+    font-size: 1rem;
+}
+
+.loading.lg .spinner-center {
+    font-size: 2rem;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+    font-weight: 500;
+}
+
+/* 스켈레톤 */
+.skeleton {
+    background: linear-gradient(90deg,
+            rgba(55, 65, 81, 0.3) 0%,
+            rgba(75, 85, 99, 0.5) 50%,
+            rgba(55, 65, 81, 0.3) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.card-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+}

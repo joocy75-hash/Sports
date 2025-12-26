@@ -1,0 +1,132 @@
+.ai-opinion-card {
+    padding: var(--space-4);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+}
+
+.ai-opinion-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.ai-opinion-card.consensus {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.aio-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+}
+
+.aio-ai {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-left: var(--space-2);
+    border-left: 3px solid;
+}
+
+.aio-icon {
+    font-size: 1.25rem;
+}
+
+.aio-name {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--gray-100);
+}
+
+.aio-prediction {
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.aio-probabilities {
+    margin-bottom: var(--space-3);
+}
+
+.prob-bar-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.prob-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 40px;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+.prob-label {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.prob-bar {
+    height: 8px;
+    background: var(--gray-700);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.prob-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease-out;
+}
+
+.prob-fill.home {
+    background: var(--odds-home);
+}
+
+.prob-fill.draw {
+    background: var(--odds-draw);
+}
+
+.prob-fill.away {
+    background: var(--odds-away);
+}
+
+.prob-value {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-300);
+    text-align: right;
+}
+
+.aio-confidence {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-3);
+    border-top: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+.conf-label {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+}
+
+.conf-value {
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.aio-reasoning {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-md);
+}
+
+.aio-reasoning p {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+    line-height: 1.6;
+    margin: 0;
+}

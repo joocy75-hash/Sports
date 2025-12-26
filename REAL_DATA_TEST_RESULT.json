@@ -1,0 +1,383 @@
+{
+  "start_time": "2025-12-23T03:30:11.746686",
+  "steps": [
+    {
+      "name": "KSPO API 연결",
+      "status": "success",
+      "duration": 0.097213,
+      "data": {
+        "total_matches": 22,
+        "date": "20251223"
+      }
+    },
+    {
+      "name": "프로토 데이터 수집",
+      "status": "success",
+      "duration": 0.963742,
+      "data": {
+        "total_proto_matches": 26
+      }
+    },
+    {
+      "name": "데이터 검증",
+      "status": "success",
+      "data": {
+        "input_count": 26,
+        "validated_count": 26,
+        "validation_rate": "100.0%"
+      }
+    },
+    {
+      "name": "텔레그램 연결 테스트",
+      "status": "success",
+      "duration": 1.003458,
+      "data": {
+        "message_sent": true,
+        "bot_token_configured": true,
+        "chat_id_configured": true
+      }
+    },
+    {
+      "name": "파이프라인 테스트 (2개 경기)",
+      "status": "success",
+      "duration": 35.631783,
+      "data": {
+        "matches_analyzed": 2,
+        "upsets_found": 0,
+        "multi_marking_count": 2,
+        "avg_confidence": 0
+      }
+    },
+    {
+      "name": "이변 감지 테스트",
+      "status": "success",
+      "data": {
+        "is_upset": false,
+        "upset_type": null,
+        "divergence": -0.1009283819628648,
+        "risk_level": "low"
+      }
+    },
+    {
+      "name": "복수 마킹 테스트",
+      "status": "success",
+      "data": {
+        "marking_type": "triple",
+        "marked_outcomes": [
+          "home",
+          "draw",
+          "away"
+        ],
+        "expected_hit_rate": 1.0,
+        "expected_value": 1.5166666666666668
+      }
+    },
+    {
+      "name": "텔레그램 알림 실전 테스트",
+      "status": "success",
+      "data": {
+        "summary_sent": true
+      }
+    }
+  ],
+  "errors": [],
+  "performance": {
+    "total_duration": 37.696196,
+    "total_steps": 8,
+    "successful_steps": 8,
+    "success_rate": "100.0%",
+    "errors_count": 0
+  },
+  "data": {
+    "proto_matches": [
+      {
+        "ateam_han_nm": "알두하일SC",
+        "match_tm": "0100",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "트락토르",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "AFC챔피언스리그엘리트",
+        "match_ymd": "20251223",
+        "row_num": 1,
+        "stdm_han_nm": "야데가르에맘스타디움"
+      },
+      {
+        "ateam_han_nm": "알힐랄SFC",
+        "match_tm": "0100",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "샤르자",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "AFC챔피언스리그엘리트",
+        "match_ymd": "20251223",
+        "row_num": 2,
+        "stdm_han_nm": "샤르자스타디움"
+      },
+      {
+        "ateam_han_nm": "앙골라",
+        "match_tm": "0200",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "남아프리카공화국",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "아프리카네이션스컵",
+        "match_ymd": "20251223",
+        "row_num": 3,
+        "stdm_han_nm": "마라케시(모로코)"
+      },
+      {
+        "ateam_han_nm": "U알와흐다",
+        "match_tm": "0315",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "알가라파SC",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "AFC챔피언스리그엘리트",
+        "match_ymd": "20251223",
+        "row_num": 4,
+        "stdm_han_nm": "타니빈자심스타디움"
+      },
+      {
+        "ateam_han_nm": "알아흘리사우디",
+        "match_tm": "0315",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "알쇼르타",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "AFC챔피언스리그엘리트",
+        "match_ymd": "20251223",
+        "row_num": 5,
+        "stdm_han_nm": "알자우라스타디움"
+      },
+      {
+        "ateam_han_nm": "볼로냐",
+        "match_tm": "0400",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "SSC나폴리",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "이탈리아슈퍼컵",
+        "match_ymd": "20251223",
+        "row_num": 6,
+        "stdm_han_nm": "알아왈파크"
+      },
+      {
+        "ateam_han_nm": "RCD에스파뇰",
+        "match_tm": "0500",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "아틀레틱빌바오",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "스페인라리가",
+        "match_ymd": "20251223",
+        "row_num": 7,
+        "stdm_han_nm": "산마메스스타디움"
+      },
+      {
+        "ateam_han_nm": "노팅엄포리스트",
+        "match_tm": "0500",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "풀럼",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "잉글랜드프리미어리그",
+        "match_ymd": "20251223",
+        "row_num": 8,
+        "stdm_han_nm": "크레이븐코티지"
+      },
+      {
+        "ateam_han_nm": "짐바브웨",
+        "match_tm": "0500",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "이집트",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "아프리카네이션스컵",
+        "match_ymd": "20251223",
+        "row_num": 9,
+        "stdm_han_nm": "아가디르(모로코)"
+      },
+      {
+        "ateam_han_nm": "샬럿호네츠",
+        "match_tm": "0900",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "클리블랜드캐벌리어스",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 10,
+        "stdm_han_nm": "로켓아레나"
+      },
+      {
+        "ateam_han_nm": "인디애나페이서스",
+        "match_tm": "0930",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "보스턴셀틱스",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 11,
+        "stdm_han_nm": "TD가든"
+      },
+      {
+        "ateam_han_nm": "댈러스매버릭스",
+        "match_tm": "1000",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "뉴올리언스펠리컨스",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 12,
+        "stdm_han_nm": "스무디킹센터"
+      },
+      {
+        "ateam_han_nm": "유타재즈",
+        "match_tm": "1100",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "덴버너게츠",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 13,
+        "stdm_han_nm": "볼아레나"
+      },
+      {
+        "ateam_han_nm": "멤피스그리즐리스",
+        "match_tm": "1130",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "오클라호마시티썬더",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 14,
+        "stdm_han_nm": "페이컴센터"
+      },
+      {
+        "ateam_han_nm": "올랜도매직",
+        "match_tm": "1200",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "골든스테이트워리어스",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 15,
+        "stdm_han_nm": "체이스센터"
+      },
+      {
+        "ateam_han_nm": "디트로이트피스톤스",
+        "match_tm": "1200",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "포틀랜드트레일블레이저스",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "NBA",
+        "match_ymd": "20251223",
+        "row_num": 16,
+        "stdm_han_nm": "모다센터"
+      },
+      {
+        "ateam_han_nm": "맥아서FC",
+        "match_tm": "1715",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "멜버른시티",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "호주A리그",
+        "match_ymd": "20251223",
+        "row_num": 17,
+        "stdm_han_nm": "AAMI파크"
+      },
+      {
+        "ateam_han_nm": "대전삼성블루팡스",
+        "match_tm": "1900",
+        "match_sport_han_nm": "배구",
+        "hteam_han_nm": "한국전력빅스톰",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "KOVO남자",
+        "match_ymd": "20251223",
+        "row_num": 18,
+        "stdm_han_nm": "수원실내체육관"
+      },
+      {
+        "ateam_han_nm": "한국도로공사하이패스",
+        "match_tm": "1900",
+        "match_sport_han_nm": "배구",
+        "hteam_han_nm": "GS칼텍스서울Kixx",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "KOVO여자",
+        "match_ymd": "20251223",
+        "row_num": 19,
+        "stdm_han_nm": "장충체육관"
+      },
+      {
+        "ateam_han_nm": "대구한국가스공사페가수스",
+        "match_tm": "1900",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "창원LG세이커스",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "KBL",
+        "match_ymd": "20251223",
+        "row_num": 20,
+        "stdm_han_nm": "창원실내체육관"
+      },
+      {
+        "ateam_han_nm": "베냉",
+        "match_tm": "2130",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "콩고민주공화국",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "아프리카네이션스컵",
+        "match_ymd": "20251223",
+        "row_num": 21,
+        "stdm_han_nm": "라바트(모로코)"
+      },
+      {
+        "ateam_han_nm": "삼성생명블루밍스",
+        "match_tm": "1900",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "우리은행우리WON",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "WKBL",
+        "match_ymd": "20251224",
+        "row_num": 22,
+        "stdm_han_nm": "아산이순신빙상장체육관"
+      },
+      {
+        "ateam_han_nm": "서울삼성썬더스",
+        "match_tm": "1900",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "부산KCC이지스",
+        "obj_prod_nm": "토토/프로토",
+        "leag_han_nm": "KBL",
+        "match_ymd": "20251224",
+        "row_num": 23,
+        "stdm_han_nm": "부산사직실내체육관"
+      },
+      {
+        "ateam_han_nm": "서울우리카드우리WON",
+        "match_tm": "1900",
+        "match_sport_han_nm": "배구",
+        "hteam_han_nm": "천안현대캐피탈스카이워커스",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "KOVO남자",
+        "match_ymd": "20251224",
+        "row_num": 24,
+        "stdm_han_nm": "천안유관순체육관"
+      },
+      {
+        "ateam_han_nm": "서울SK나이츠",
+        "match_tm": "2040",
+        "match_sport_han_nm": "농구",
+        "hteam_han_nm": "타이베이푸본브레이브스",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "동아시아슈퍼리그",
+        "match_ymd": "20251224",
+        "row_num": 25,
+        "stdm_han_nm": "타이베이허핑체육관"
+      },
+      {
+        "ateam_han_nm": "적도기니",
+        "match_tm": "2130",
+        "match_sport_han_nm": "축구",
+        "hteam_han_nm": "부르키나파소",
+        "obj_prod_nm": "프로토",
+        "leag_han_nm": "아프리카네이션스컵",
+        "match_ymd": "20251224",
+        "row_num": 26,
+        "stdm_han_nm": "카사블랑카(모로코)"
+      }
+    ],
+    "pipeline_result": "RoundAnalysisResult(round_id='TEST_REAL', sport_type='soccer', matches=[MatchAnalysisResult(match_id=1, home_team='트락토르', away_team='알두하일SC', league='축구', match_time='20251223', predictions={'home_prob': np.float64(0.2071), 'draw_prob': np.float64(0.6716), 'away_prob': np.float64(0.1213), 'predicted_outcome': 'draw', 'predicted_outcome_kr': '무', 'overall_confidence': 0.1216, 'consensus_score': 0, 'llm_prediction': {'available': True, 'prediction': {'model_name': 'LLM AI Ensemble', 'model_type': 'llm', 'home_prob': 0.3217727272727272, 'draw_prob': 0.3543636363636364, 'away_prob': 0.32386363636363635, 'confidence': 0.55, 'weight': 0.5, 'reasoning': '⚠️ 참고: 무승부 예상 (신뢰도 55%)'}}, 'ml_prediction': {'available': True, 'prediction': {'model_name': 'LightGBM', 'model_type': 'ml', 'home_prob': np.float64(0.28698978636149197), 'draw_prob': np.float64(0.3415748265123828), 'away_prob': np.float64(0.3714353871261252), 'confidence': 0.75, 'weight': 0.25, 'reasoning': 'LightGBM 머신러닝 예측'}}, 'statistical_prediction': {'available': True, 'predictions': [{'model_name': 'Statistical Ensemble', 'model_type': 'statistical', 'home_prob': 20.4, 'draw_prob': 68.12, 'away_prob': 11.47, 'confidence': 46.8, 'weight': 0.25, 'reasoning': '합의도: 50%'}, {'model_name': 'Poisson', 'model_type': 'statistical_sub', 'home_prob': 0.0, 'draw_prob': 100.0, 'away_prob': 0.0, 'confidence': 50.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'ELO Rating', 'model_type': 'statistical_sub', 'home_prob': 40.8, 'draw_prob': 36.25, 'away_prob': 22.95, 'confidence': 60.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'Poisson Distribution', 'model_type': 'statistical_sub', 'home_prob': np.float64(0.0), 'draw_prob': np.float64(1.0), 'away_prob': np.float64(0.0), 'confidence': 0.7, 'weight': 0, 'reasoning': \"예상 스코어: {'home': 0.0, 'away': 0.0}\"}]}, 'all_models': [{'model_name': 'LLM AI Ensemble', 'model_type': 'llm', 'home_prob': 0.3217727272727272, 'draw_prob': 0.3543636363636364, 'away_prob': 0.32386363636363635, 'confidence': 0.55, 'weight': 0.5, 'reasoning': '⚠️ 참고: 무승부 예상 (신뢰도 55%)'}, {'model_name': 'LightGBM', 'model_type': 'ml', 'home_prob': np.float64(0.28698978636149197), 'draw_prob': np.float64(0.3415748265123828), 'away_prob': np.float64(0.3714353871261252), 'confidence': 0.75, 'weight': 0.25, 'reasoning': 'LightGBM 머신러닝 예측'}, {'model_name': 'Statistical Ensemble', 'model_type': 'statistical', 'home_prob': 20.4, 'draw_prob': 68.12, 'away_prob': 11.47, 'confidence': 46.8, 'weight': 0.25, 'reasoning': '합의도: 50%'}, {'model_name': 'Poisson', 'model_type': 'statistical_sub', 'home_prob': 0.0, 'draw_prob': 100.0, 'away_prob': 0.0, 'confidence': 50.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'ELO Rating', 'model_type': 'statistical_sub', 'home_prob': 40.8, 'draw_prob': 36.25, 'away_prob': 22.95, 'confidence': 60.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'Poisson Distribution', 'model_type': 'statistical_sub', 'home_prob': np.float64(0.0), 'draw_prob': np.float64(1.0), 'away_prob': np.float64(0.0), 'confidence': 0.7, 'weight': 0, 'reasoning': \"예상 스코어: {'home': 0.0, 'away': 0.0}\"}], 'analyzed_at': '2025-12-23T03:30:31.793373', 'analysis_time_ms': 16322}, synthesized={'home_win_prob': np.float64(0.2071), 'draw_prob': np.float64(0.6716), 'away_win_prob': np.float64(0.1213)}, confidence=0.1216, consensus=0, our_odds={'home_win_odds': np.float64(4.6), 'draw_odds': np.float64(1.42), 'away_win_odds': np.float64(7.85)}, official_odds={'home': 1.8, 'draw': 3.2, 'away': 4.5}, value_bets=[{'match_id': 1, 'outcome': 'draw', 'our_odds': np.float64(1.42), 'official_odds': 3.2, 'value': np.float64(1.2535), 'value_percentage': '125.4%', 'confidence': 0.1216, 'recommendation': 'SKIP', 'expected_value': 0.056}], features={'home_strength': 0.5, 'away_strength': 0.5, 'strength_diff': 0.0, 'home_form': 0.5, 'away_form': 0.5, 'form_diff': 0.0, 'h2h_advantage': 0.0, 'home_advantage_factor': 0.1, 'home_avg_scored': 0.0, 'away_avg_scored': 0.0, 'home_avg_conceded': 0.0, 'away_avg_conceded': 0.0, 'home_rank_score': 0.5263, 'away_rank_score': 0.5263, 'home_rest_factor': 0.4286, 'away_rest_factor': 0.4286, 'home_injury_impact': 0.0, 'away_injury_impact': 0.0}, key_factors=[]), MatchAnalysisResult(match_id=2, home_team='샤르자', away_team='알힐랄SFC', league='축구', match_time='20251223', predictions={'home_prob': np.float64(0.204), 'draw_prob': np.float64(0.6688), 'away_prob': np.float64(0.1272), 'predicted_outcome': 'draw', 'predicted_outcome_kr': '무', 'overall_confidence': 0.123, 'consensus_score': 0, 'llm_prediction': {'available': True, 'prediction': {'model_name': 'LLM AI Ensemble', 'model_type': 'llm', 'home_prob': 0.162233676975945, 'draw_prob': 0.20907216494845363, 'away_prob': 0.6286941580756014, 'confidence': 0.82, 'weight': 0.5, 'reasoning': '🔥 강력 추천: 원정 승리 (AI 만장일치, 신뢰도 82%)'}}, 'ml_prediction': {'available': True, 'prediction': {'model_name': 'LightGBM', 'model_type': 'ml', 'home_prob': np.float64(0.28698978636149197), 'draw_prob': np.float64(0.3415748265123828), 'away_prob': np.float64(0.3714353871261252), 'confidence': 0.75, 'weight': 0.25, 'reasoning': 'LightGBM 머신러닝 예측'}}, 'statistical_prediction': {'available': True, 'predictions': [{'model_name': 'Statistical Ensemble', 'model_type': 'statistical', 'home_prob': 20.4, 'draw_prob': 68.12, 'away_prob': 11.47, 'confidence': 46.8, 'weight': 0.25, 'reasoning': '합의도: 50%'}, {'model_name': 'Poisson', 'model_type': 'statistical_sub', 'home_prob': 0.0, 'draw_prob': 100.0, 'away_prob': 0.0, 'confidence': 50.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'ELO Rating', 'model_type': 'statistical_sub', 'home_prob': 40.8, 'draw_prob': 36.25, 'away_prob': 22.95, 'confidence': 60.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'Poisson Distribution', 'model_type': 'statistical_sub', 'home_prob': np.float64(0.0), 'draw_prob': np.float64(1.0), 'away_prob': np.float64(0.0), 'confidence': 0.7, 'weight': 0, 'reasoning': \"예상 스코어: {'home': 0.0, 'away': 0.0}\"}]}, 'all_models': [{'model_name': 'LLM AI Ensemble', 'model_type': 'llm', 'home_prob': 0.162233676975945, 'draw_prob': 0.20907216494845363, 'away_prob': 0.6286941580756014, 'confidence': 0.82, 'weight': 0.5, 'reasoning': '🔥 강력 추천: 원정 승리 (AI 만장일치, 신뢰도 82%)'}, {'model_name': 'LightGBM', 'model_type': 'ml', 'home_prob': np.float64(0.28698978636149197), 'draw_prob': np.float64(0.3415748265123828), 'away_prob': np.float64(0.3714353871261252), 'confidence': 0.75, 'weight': 0.25, 'reasoning': 'LightGBM 머신러닝 예측'}, {'model_name': 'Statistical Ensemble', 'model_type': 'statistical', 'home_prob': 20.4, 'draw_prob': 68.12, 'away_prob': 11.47, 'confidence': 46.8, 'weight': 0.25, 'reasoning': '합의도: 50%'}, {'model_name': 'Poisson', 'model_type': 'statistical_sub', 'home_prob': 0.0, 'draw_prob': 100.0, 'away_prob': 0.0, 'confidence': 50.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'ELO Rating', 'model_type': 'statistical_sub', 'home_prob': 40.8, 'draw_prob': 36.25, 'away_prob': 22.95, 'confidence': 60.0, 'weight': 0, 'reasoning': ''}, {'model_name': 'Poisson Distribution', 'model_type': 'statistical_sub', 'home_prob': np.float64(0.0), 'draw_prob': np.float64(1.0), 'away_prob': np.float64(0.0), 'confidence': 0.7, 'weight': 0, 'reasoning': \"예상 스코어: {'home': 0.0, 'away': 0.0}\"}], 'analyzed_at': '2025-12-23T03:30:44.577891', 'analysis_time_ms': 12783}, synthesized={'home_win_prob': np.float64(0.204), 'draw_prob': np.float64(0.6688), 'away_win_prob': np.float64(0.1272)}, confidence=0.123, consensus=0, our_odds={'home_win_odds': np.float64(4.67), 'draw_odds': np.float64(1.42), 'away_win_odds': np.float64(7.49)}, official_odds={'home': 1.8, 'draw': 3.2, 'away': 4.5}, value_bets=[{'match_id': 2, 'outcome': 'draw', 'our_odds': np.float64(1.42), 'official_odds': 3.2, 'value': np.float64(1.2535), 'value_percentage': '125.4%', 'confidence': 0.123, 'recommendation': 'SKIP', 'expected_value': 0.056}], features={'home_strength': 0.5, 'away_strength': 0.5, 'strength_diff': 0.0, 'home_form': 0.5, 'away_form': 0.5, 'form_diff': 0.0, 'h2h_advantage': 0.0, 'home_advantage_factor': 0.1, 'home_avg_scored': 0.0, 'away_avg_scored': 0.0, 'home_avg_conceded': 0.0, 'away_avg_conceded': 0.0, 'home_rank_score': 0.5263, 'away_rank_score': 0.5263, 'home_rest_factor': 0.4286, 'away_rest_factor': 0.4286, 'home_injury_impact': 0.0, 'away_injury_impact': 0.0}, key_factors=[])], combinations=[{'name': '💰 고가치 조합', 'strategy': 'high_value', 'strategy_desc': 'Value Bet 10% 이상 선택', 'selections': [{'match_id': 1, 'home_team': '트락토르', 'away_team': '알두하일SC', 'outcome': 'draw', 'outcome_str': '무', 'probability': np.float64(0.6716), 'confidence': 0.1216, 'odds': 3.2, 'value': np.float64(1.2535)}, {'match_id': 2, 'home_team': '샤르자', 'away_team': '알힐랄SFC', 'outcome': 'draw', 'outcome_str': '무', 'probability': np.float64(0.6688), 'confidence': 0.123, 'odds': 3.2, 'value': np.float64(1.2535)}], 'total_odds': 10.24, 'metrics': {'expected_roi': np.float64(3.5995), 'win_probability': np.float64(0.4492), 'risk_level': 'HIGH', 'num_matches': 2, 'avg_confidence': 0.1223, 'avg_odds': 3.2}, 'stake_suggestion': 0.01}], summary={'total_matches': 2, 'high_confidence_matches': 0, 'value_bets_found': 2, 'avg_consensus': 0.0, 'best_combination': '💰 고가치 조합', 'expected_roi': np.float64(3.5995), 'recommendation': '🔥 강력 추천! 예상 ROI 359.9% (💰 고가치 조합)', 'upset_count': 0, 'multi_marking_count': 2, 'final_markings': {'round_id': 'TEST_REAL', 'final_markings': [{'game_no': 1, 'match_name': '트락토르 vs 알두하일SC', 'marking': ['홈승', '무승부', '원정승'], 'marking_type': 'triple', 'ai_consensus': '0/5 (0%)', 'confidence': 12, 'probabilities': {'홈승': '33%', '무승부': '33%', '원정승': '33%'}, 'is_upset': False, 'reasoning': '3개 복수 (전체, 확실 적중)'}, {'game_no': 2, 'match_name': '샤르자 vs 알힐랄SFC', 'marking': ['홈승', '무승부', '원정승'], 'marking_type': 'triple', 'ai_consensus': '0/5 (0%)', 'confidence': 12, 'probabilities': {'홈승': '33%', '무승부': '33%', '원정승': '33%'}, 'is_upset': False, 'reasoning': '3개 복수 (전체, 확실 적중)'}], 'summary': {'total_games': 2, 'single_count': 0, 'double_count': 0, 'triple_count': 2, 'upset_count': 0, 'avg_confidence': 12.0, 'high_confidence_singles': 0, 'multi_marking_ratio': 100.0, 'confidence_breakdown': {'high': 0, 'medium': 0, 'low': 2}}, 'generated_at': '2025-12-23T03:30:44.579023'}}, generated_at='2025-12-23T03:30:49.443500')"
+  },
+  "end_time": "2025-12-23T03:30:50.554687"
+}

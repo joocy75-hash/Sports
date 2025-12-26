@@ -1,0 +1,10 @@
+.confidence-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.gauge-label {
+    text-align: center;
+    font-weight: 500;
+}

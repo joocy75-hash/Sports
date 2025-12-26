@@ -1,0 +1,182 @@
+# Group B: Personal Automation Services
+# 스포츠 분석, 네이버 블로그 자동화, 트레이딩뷰 전략 수집기
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 1. 스포츠 분석 시스템 (Proto 14게임)
+  # ============================================
+  sports-analysis:
+    build:
+      context: ./sports_analysis
+      dockerfile: Dockerfile
+    container_name: sports_analysis
+    restart: always
+
+    # 리소스 제한 (1GB RAM, 0.5 CPU)
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+    # 환경 변수
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONUNBUFFERED=1
+      # AI API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - KIMI_API_KEY=${KIMI_API_KEY}
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      # KSPO API
+      - KSPO_TODZ_API_KEY=${KSPO_TODZ_API_KEY}
+
+    # 볼륨 마운트 (상태 저장)
+    volumes:
+      - sports_state:/app/.state
+      - ./sports_analysis/logs:/app/logs
+
+    # 포트 노출 (API 서버 사용 시)
+    ports:
+      - "5001:8000"
+
+    # 네트워크
+    networks:
+      - automation_net
+
+    # 헬스체크
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
+
+    # 로깅 설정
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # 2. 네이버 블로그 자동화
+  # ============================================
+  naver-blog:
+    build:
+      context: ./naver_blog
+      dockerfile: Dockerfile
+    container_name: naver_blog
+    restart: always
+
+    # 리소스 제한 (256MB RAM, 0.25 CPU)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONUNBUFFERED=1
+      # 네이버 API 인증
+      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID:-}
+      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET:-}
+      # OpenAI (콘텐츠 생성용)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+    volumes:
+      - naver_state:/app/.state
+      - ./naver_blog/logs:/app/logs
+
+    ports:
+      - "5002:8000"
+
+    networks:
+      - automation_net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ============================================
+  # 3. 트레이딩뷰 전략 수집기
+  # ============================================
+  tradingview-collector:
+    build:
+      context: ./tradingview
+      dockerfile: Dockerfile
+    container_name: tv_collector
+    restart: always
+
+    # 리소스 제한 (256MB RAM, 0.25 CPU)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONUNBUFFERED=1
+      # TradingView 인증 (필요시)
+      - TV_USERNAME=${TV_USERNAME:-}
+      - TV_PASSWORD=${TV_PASSWORD:-}
+      # Telegram 알림
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
+    volumes:
+      - tv_state:/app/.state
+      - ./tradingview/logs:/app/logs
+      - ./tradingview/strategies:/app/strategies
+
+    ports:
+      - "5003:8000"
+
+    networks:
+      - automation_net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+# ============================================
+# 네트워크 정의 (완전 격리)
+# ============================================
+networks:
+  automation_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================
+# 볼륨 정의 (영속 데이터)
+# ============================================
+volumes:
+  sports_state:
+    driver: local
+  naver_state:
+    driver: local
+  tv_state:
+    driver: local

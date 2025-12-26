@@ -1,0 +1,344 @@
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+
+.page-header {
+    margin-bottom: var(--space-4);
+}
+
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--gray-50);
+    margin-bottom: var(--space-2);
+}
+
+.title-icon {
+    font-size: 1.2em;
+}
+
+.page-subtitle {
+    font-size: var(--text-base);
+    color: var(--gray-400);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+}
+
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+    gap: var(--space-4);
+}
+
+.error-icon {
+    font-size: 4rem;
+}
+
+.error-container h2 {
+    color: var(--gray-100);
+    font-size: var(--text-xl);
+}
+
+.error-container p {
+    color: var(--gray-400);
+}
+
+/* 카테고리 목록 */
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+    transition: all var(--transition-fast);
+}
+
+.category-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.category-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.category-name {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--gray-100);
+}
+
+.category-code {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    font-family: var(--font-mono);
+}
+
+.category-stats {
+    display: flex;
+    gap: var(--space-4);
+}
+
+.round-count,
+.match-count {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+    padding: var(--space-1) var(--space-3);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-full);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-8);
+    color: var(--gray-500);
+}
+
+.empty-icon {
+    font-size: 2rem;
+}
+
+/* 회차 그리드 */
+.rounds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+.round-card {
+    padding: var(--space-5);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+    transition: all var(--transition-fast);
+}
+
+.round-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.round-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+}
+
+.round-category {
+    font-size: var(--text-xs);
+    color: var(--primary-400);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.round-number {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--gray-100);
+}
+
+.round-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-4);
+}
+
+.round-matches {
+    font-size: var(--text-sm);
+    color: var(--gray-300);
+}
+
+.round-deadline {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.analyze-btn {
+    width: 100%;
+    padding: var(--space-3);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--primary-400);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.analyze-btn:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* 빠른 시작 */
+.quick-start {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+}
+
+@media (max-width: 1024px) {
+    .quick-start {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .quick-start {
+        grid-template-columns: 1fr;
+    }
+}
+
+.step {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+.step-number {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: var(--text-lg);
+    color: white;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--gray-100);
+    margin-bottom: var(--space-1);
+}
+
+.step-content p {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+    line-height: 1.5;
+}
+
+/* 경기 프리뷰 */
+.matches-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-4);
+}
+
+.match-preview-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+    transition: all var(--transition-fast);
+}
+
+.match-preview-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.match-teams {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.match-teams .team {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--gray-200);
+}
+
+.match-teams .vs {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    padding: 0 var(--space-1);
+}
+
+.match-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.match-status {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.match-status.status-예정 {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--primary-400);
+}
+
+.match-status.status-진행중 {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success-400);
+}
+
+.match-status.status-종료 {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--gray-400);
+}
+
+.match-status.status-마감 {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-400);
+}
+
+.match-time {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
