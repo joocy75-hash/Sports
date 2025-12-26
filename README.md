@@ -96,4 +96,4 @@ python -m uvicorn src.api.unified_server:app --reload --port 8000
 
 ---
 
-**버전**: 2.0.0 | **업데이트**: 2025-12-25
+**버전**: 3.1.0 | **업데이트**: 2025-12-27 | **배포**: [Hetzner](http://5.161.112.248:5001)
