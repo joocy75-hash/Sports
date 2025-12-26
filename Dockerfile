@@ -69,9 +69,9 @@ COPY basketball_w5l_analyzer.py .
 COPY basketball_w5l_notifier.py .
 COPY collect_and_notify.py .
 
-# 설정 파일 (있는 경우)
-COPY alembic.ini* ./
-COPY alembic/ ./alembic/ 2>/dev/null || true
+# 설정 파일
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
 # 상태 저장 디렉토리 생성
 RUN mkdir -p .state logs

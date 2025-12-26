@@ -1,267 +1,501 @@
 # 스포츠 분석 시스템 배포 가이드
 
-## 서버 정보
+> **최종 업데이트**: 2025-12-27
+> **현재 상태**: 운영 중 (5.161.112.248)
+
+---
+
+## 목차
+
+1. [서버 정보](#1-서버-정보)
+2. [현재 배포 상태](#2-현재-배포-상태)
+3. [GitHub Actions 자동 배포 설정](#3-github-actions-자동-배포-설정-중요)
+4. [수동 배포 방법](#4-수동-배포-방법)
+5. [환경 변수 설정](#5-환경-변수-설정)
+6. [서비스 관리](#6-서비스-관리)
+7. [문제 해결](#7-문제-해결)
+8. [아키텍처](#8-아키텍처)
+
+---
+
+## 1. 서버 정보
 
 | 항목 | 값 |
 |------|-----|
-| IP | 5.161.112.248 |
-| 이름 | deep-server |
-| 위치 | Ashburn, VA (USA) |
-| 사양 | 4 vCPU / 8 GB RAM / 160 GB SSD |
-| OS | Ubuntu 24.04 LTS |
+| **IP** | `5.161.112.248` |
+| **이름** | deep-server |
+| **위치** | Ashburn, VA (USA) |
+| **사양** | CPX31 (4 vCPU / 8 GB RAM / 160 GB SSD) |
+| **OS** | Ubuntu 24.04 LTS |
+| **Docker** | 29.1.3 |
+| **Docker Compose** | v5.0.0 |
 
----
-
-## 빠른 시작
-
-### 1. 첫 배포 (서버 초기 설정 포함)
+### SSH 접속
 
 ```bash
-./scripts/deploy-to-server.sh --init
-```
-
-이 명령은 다음을 수행합니다:
-- Docker 설치
-- 2GB Swap 설정
-- 방화벽(UFW) 설정
-- 코드 업로드
-- .env 파일 업로드
-- 서비스 시작
-
-### 2. 코드 업데이트
-
-```bash
-./scripts/deploy-to-server.sh --update
-```
-
-또는 GitHub에 push하면 자동 배포됩니다.
-
-### 3. 기타 명령
-
-```bash
-# 서비스 재시작만
-./scripts/deploy-to-server.sh --restart
-
-# 실시간 로그 확인
-./scripts/deploy-to-server.sh --logs
-
-# 서버 상태 확인
-./scripts/deploy-to-server.sh --status
+ssh root@5.161.112.248
 ```
 
 ---
 
-## GitHub Actions 자동 배포
+## 2. 현재 배포 상태
 
-### 필요한 Secrets 설정
+### 실행 중인 컨테이너
 
-GitHub 저장소 → Settings → Secrets and variables → Actions에서 추가:
+| 컨테이너 | 이미지 | 포트 | 메모리 | 상태 |
+|----------|--------|------|--------|------|
+| `sports_analysis` | sports-analysis-sports-analysis | 5001→8000 | 1GB | Running |
+| `freqtrade-master` | freqtrade (별도) | - | 1GB | Running |
+
+### 스포츠 분석 서비스 정보
+
+```
+컨테이너명: sports_analysis
+실행 모드: 스케줄러 (6시간마다 자동 분석)
+기능: 축구 승무패 + 농구 승5패 AI 분석 → 텔레그램 알림
+```
+
+---
+
+## 3. GitHub Actions 자동 배포 설정 (중요!)
+
+### 3.1 GitHub 저장소
+
+```
+https://github.com/joocy75-hash/Sports.git
+```
+
+### 3.2 필요한 Secrets 설정 (3개)
+
+GitHub 저장소 페이지에서:
+1. **Settings** 탭 클릭
+2. 좌측 메뉴에서 **Secrets and variables** → **Actions** 클릭
+3. **New repository secret** 버튼으로 아래 3개 추가
 
 | Secret Name | 값 | 설명 |
 |-------------|-----|------|
-| `HETZNER_SSH_KEY` | 개인키 전체 | SSH 접속용 개인키 |
-| `TELEGRAM_BOT_TOKEN` | `123456:ABC...` | 배포 알림용 |
+| `HETZNER_SSH_KEY` | SSH 개인키 전체 내용 | 서버 접속용 |
+| `TELEGRAM_BOT_TOKEN` | `1234567890:ABCdef...` | 배포 알림용 |
 | `TELEGRAM_CHAT_ID` | `987654321` | 알림 받을 채팅방 |
 
-### SSH 키 생성 및 등록
+### 3.3 SSH 키 설정 방법 (상세)
+
+#### 방법 A: 기존 키 사용 (이미 서버 접속이 되는 경우)
 
 ```bash
-# 1. 키 생성 (로컬)
-ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/hetzner_deploy
+# 1. 로컬에서 기존 개인키 내용 확인
+cat ~/.ssh/id_ed25519
+# 또는
+cat ~/.ssh/id_rsa
+
+# 2. 출력된 전체 내용을 복사
+# -----BEGIN OPENSSH PRIVATE KEY----- 부터
+# -----END OPENSSH PRIVATE KEY----- 까지 전체
+
+# 3. GitHub Secrets에 HETZNER_SSH_KEY로 등록
+```
+
+#### 방법 B: 새 키 생성 (처음 설정하는 경우)
+
+```bash
+# 1. 새 SSH 키 생성 (로컬에서)
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/hetzner_deploy -N ""
 
 # 2. 공개키를 서버에 등록
 ssh-copy-id -i ~/.ssh/hetzner_deploy.pub root@5.161.112.248
 
-# 3. 개인키를 GitHub Secrets에 등록
+# 3. 접속 테스트
+ssh -i ~/.ssh/hetzner_deploy root@5.161.112.248 "echo '접속 성공!'"
+
+# 4. 개인키 내용 확인 후 GitHub Secrets에 등록
 cat ~/.ssh/hetzner_deploy
-# 출력된 전체 내용을 HETZNER_SSH_KEY에 저장
 ```
 
-### 배포 트리거
+### 3.4 자동 배포 트리거
 
-- **자동**: `main` 브랜치에 push 시
-- **수동**: GitHub Actions → Deploy Sports Analysis → Run workflow
+| 트리거 | 조건 |
+|--------|------|
+| **자동** | `main` 브랜치에 push 시 |
+| **수동** | GitHub Actions 페이지에서 "Run workflow" 클릭 |
+
+### 3.5 배포 워크플로우 확인
+
+```
+GitHub 저장소 → Actions 탭 → "Deploy Sports Analysis" 워크플로우
+```
+
+배포 성공 시 텔레그램으로 알림이 옵니다:
+```
+✅ 스포츠 분석 배포 성공
+
+📦 커밋: abc1234
+👤 배포자: username
+🕐 시간: 2025-12-27 10:30:00
+```
 
 ---
 
-## 수동 배포 (서버에서 직접)
+## 4. 수동 배포 방법
+
+### 4.1 로컬에서 스크립트로 배포 (권장)
+
+```bash
+# 프로젝트 디렉토리에서
+cd /Users/mr.joo/Desktop/스포츠분석
+
+# 첫 배포 (서버 초기 설정 포함)
+./scripts/deploy-to-server.sh --init
+
+# 코드 업데이트만
+./scripts/deploy-to-server.sh --update
+
+# 기타 명령
+./scripts/deploy-to-server.sh --restart  # 재시작
+./scripts/deploy-to-server.sh --logs     # 로그 확인
+./scripts/deploy-to-server.sh --status   # 상태 확인
+```
+
+### 4.2 서버에서 직접 배포
 
 ```bash
 # 1. 서버 접속
 ssh root@5.161.112.248
 
-# 2. 프로젝트 디렉토리로 이동
+# 2. 프로젝트 디렉토리 이동
 cd /root/sports-analysis
 
-# 3. 코드 업데이트 (Git 사용 시)
+# 3. 최신 코드 가져오기 (Git 사용 시)
 git pull origin main
 
-# 4. 이미지 빌드 및 재시작
-docker compose build
+# 4. Docker 이미지 재빌드
+docker compose build --no-cache
+
+# 5. 서비스 재시작
 docker compose down
 docker compose up -d
 
-# 5. 로그 확인
-docker compose logs -f
+# 6. 상태 확인
+docker compose ps
+docker compose logs --tail=50
 ```
 
----
-
-## 서비스 구조
-
-```
-/root/sports-analysis/
-├── docker-compose.yml      # 컨테이너 설정
-├── Dockerfile              # 이미지 빌드 설정
-├── .env                    # 환경 변수 (비공개)
-├── auto_sports_notifier.py # 메인 실행 파일
-├── src/                    # 소스 코드
-│   └── services/           # 핵심 서비스
-└── .state/                 # 상태 저장 (볼륨)
-```
-
-### 컨테이너 정보
-
-| 항목 | 값 |
-|------|-----|
-| 컨테이너명 | `sports_analysis` |
-| 포트 | `5001:8000` |
-| 메모리 제한 | 1GB |
-| CPU 제한 | 0.5 vCPU |
-| 실행 모드 | 스케줄러 (6시간 간격) |
-
----
-
-## 환경 변수 (.env)
-
-서버의 `/root/sports-analysis/.env` 파일에 설정:
+### 4.3 rsync로 직접 파일 업로드
 
 ```bash
-# AI API Keys (최소 1개 필수)
+# 로컬에서 실행
+rsync -avz --progress \
+    --exclude='.git' \
+    --exclude='__pycache__' \
+    --exclude='*.pyc' \
+    --exclude='.state' \
+    --exclude='logs' \
+    --exclude='.env' \
+    --exclude='node_modules' \
+    --exclude='deepseek_env' \
+    --exclude='.DS_Store' \
+    /Users/mr.joo/Desktop/스포츠분석/ \
+    root@5.161.112.248:/root/sports-analysis/
+```
+
+---
+
+## 5. 환경 변수 설정
+
+### 5.1 서버의 .env 파일 위치
+
+```
+/root/sports-analysis/.env
+```
+
+### 5.2 필수 환경 변수
+
+```bash
+# ============================================
+# AI API Keys (최소 1개 필수, 5개 권장)
+# ============================================
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
 DEEPSEEK_API_KEY=sk-...
 KIMI_API_KEY=...
 
+# ============================================
 # Telegram (필수)
-TELEGRAM_BOT_TOKEN=1234567890:ABCdef...
+# ============================================
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ
 TELEGRAM_CHAT_ID=987654321
 
+# ============================================
 # KSPO API (베트맨 데이터)
-KSPO_TODZ_API_KEY=...
+# ============================================
+KSPO_TODZ_API_KEY=your_api_key_here
+```
+
+### 5.3 .env 파일 업로드 (최초 1회)
+
+```bash
+# 로컬 .env를 서버에 복사
+scp /Users/mr.joo/Desktop/스포츠분석/.env root@5.161.112.248:/root/sports-analysis/.env
+```
+
+### 5.4 .env 수정 (서버에서)
+
+```bash
+ssh root@5.161.112.248
+nano /root/sports-analysis/.env
+# 수정 후 Ctrl+X → Y → Enter로 저장
+
+# 서비스 재시작 (환경변수 적용)
+cd /root/sports-analysis
+docker compose down && docker compose up -d
 ```
 
 ---
 
-## 모니터링
+## 6. 서비스 관리
 
-### 컨테이너 상태 확인
+### 6.1 기본 명령어
 
 ```bash
-# 컨테이너 상태
+# 서버 접속
+ssh root@5.161.112.248
+cd /root/sports-analysis
+
+# 상태 확인
 docker compose ps
 
-# 리소스 사용량
-docker stats sports_analysis
+# 로그 확인 (실시간)
+docker compose logs -f
 
-# 실시간 로그
-docker compose logs -f --tail=100
+# 로그 확인 (최근 100줄)
+docker compose logs --tail=100
+
+# 서비스 재시작
+docker compose restart
+
+# 서비스 중지
+docker compose down
+
+# 서비스 시작
+docker compose up -d
+
+# 이미지 재빌드 후 시작
+docker compose up -d --build
 ```
 
-### 헬스체크
+### 6.2 리소스 모니터링
 
 ```bash
+# 컨테이너 리소스 사용량
+docker stats
+
+# 시스템 메모리
+free -h
+
+# 디스크 사용량
+df -h /
+
 # 컨테이너 헬스 상태
 docker inspect sports_analysis --format='{{.State.Health.Status}}'
 ```
 
+### 6.3 컨테이너 내부 접속
+
+```bash
+# bash 쉘로 접속
+docker compose exec sports_analysis bash
+
+# Python 인터랙티브
+docker compose exec sports_analysis python
+
+# 특정 명령 실행
+docker compose exec sports_analysis python auto_sports_notifier.py --test
+```
+
 ---
 
-## 문제 해결
+## 7. 문제 해결
 
-### 1. 컨테이너가 시작되지 않음
+### 7.1 컨테이너가 시작되지 않음
 
 ```bash
-# 로그 확인
+# 1. 로그 확인
 docker compose logs sports_analysis
 
-# 일반적인 원인:
-# - .env 파일 누락
-# - API 키 오류
-# - 포트 충돌
+# 2. 일반적인 원인
+# - .env 파일 누락 → scp로 업로드
+# - API 키 오류 → .env 확인
+# - 포트 충돌 → docker ps로 확인
 ```
 
-### 2. Playwright 브라우저 오류
+### 7.2 베트맨 크롤러 타임아웃
 
-```bash
-# 컨테이너 내부에서 Playwright 재설치
-docker compose exec sports_analysis playwright install chromium
-docker compose restart
+```
+정상 동작입니다. 크롤러 실패 시 자동으로 KSPO API로 fallback됩니다.
+로그에서 "크롤러 실패, API fallback 시도" 메시지는 정상입니다.
 ```
 
-### 3. 메모리 부족
+### 7.3 메모리 부족 (OOM)
 
 ```bash
 # Swap 확인
 free -h
 
-# Swap이 없으면 추가
+# Swap 없으면 추가 (이미 설정됨)
 fallocate -l 2G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 
-### 4. 볼륨 데이터 백업
+### 7.4 Docker 빌드 실패
 
 ```bash
-# 상태 데이터 백업
-docker run --rm -v sports-analysis_sports_state:/data -v $(pwd):/backup alpine tar czf /backup/state-backup.tar.gz /data
-```
+# 캐시 없이 재빌드
+docker compose build --no-cache
 
----
-
-## 롤백
-
-```bash
-# 이전 커밋으로 롤백
-cd /root/sports-analysis
-git checkout HEAD~1
-
-# 재빌드 및 재시작
+# 이미지 정리 후 재빌드
+docker system prune -a
 docker compose build
-docker compose down
-docker compose up -d
+```
+
+### 7.5 텔레그램 알림이 안 옴
+
+```bash
+# 1. .env 확인
+cat /root/sports-analysis/.env | grep TELEGRAM
+
+# 2. 토큰 테스트
+curl "https://api.telegram.org/bot<TOKEN>/getMe"
+
+# 3. Chat ID 확인
+curl "https://api.telegram.org/bot<TOKEN>/getUpdates"
+```
+
+### 7.6 서비스 완전 초기화
+
+```bash
+# 모든 컨테이너, 볼륨, 이미지 삭제 후 재시작
+cd /root/sports-analysis
+docker compose down -v
+docker system prune -a
+docker compose up -d --build
 ```
 
 ---
 
-## 보안 설정
+## 8. 아키텍처
 
-### 방화벽 (UFW)
+### 8.1 디렉토리 구조 (서버)
 
-```bash
-# 현재 규칙 확인
-ufw status
-
-# 필요한 포트만 열기
-ufw allow 22/tcp    # SSH
-ufw allow 5001/tcp  # 스포츠 분석 API
+```
+/root/sports-analysis/
+├── docker-compose.yml      # Docker 서비스 정의
+├── Dockerfile              # 이미지 빌드 설정
+├── .env                    # 환경 변수 (비공개)
+├── requirements.txt        # Python 패키지
+│
+├── auto_sports_notifier.py # 메인 실행 파일
+├── basketball_w5l_*.py     # 농구 분석
+├── collect_and_notify.py   # 데이터 수집
+│
+├── src/
+│   └── services/
+│       ├── ai_orchestrator.py    # 5개 AI 앙상블
+│       ├── betman_crawler.py     # 베트맨 크롤러
+│       ├── round_manager.py      # 회차 관리
+│       ├── telegram_notifier.py  # 텔레그램 알림
+│       └── ai/                   # AI 분석기들
+│
+└── .state/                 # 상태 저장 (Docker 볼륨)
 ```
 
-### Fail2Ban (선택)
+### 8.2 데이터 흐름
 
-```bash
-# 설치
-apt install fail2ban -y
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    스케줄러 (6시간 간격)                      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    RoundManager                              │
+│          (베트맨 크롤러 → KSPO API fallback)                 │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   AI Orchestrator                            │
+│      GPT-4 | Claude | Gemini | DeepSeek | Kimi               │
+│              (5개 모델 앙상블 분석)                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Telegram Notifier                           │
+│           축구 승무패 / 농구 승5패 예측 전송                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-# SSH 보호 활성화
-systemctl enable fail2ban
-systemctl start fail2ban
+### 8.3 Docker Compose 설정
+
+```yaml
+services:
+  sports-analysis:
+    container_name: sports_analysis
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+    ports:
+      - "5001:8000"
+    volumes:
+      - sports_state:/app/.state
+      - sports_logs:/app/logs
 ```
 
 ---
 
-**작성일**: 2025-12-27
-**버전**: 1.0.0
+## 부록: 빠른 참조
+
+### 자주 쓰는 명령어
+
+```bash
+# 서버 접속
+ssh root@5.161.112.248
+
+# 로그 확인
+cd /root/sports-analysis && docker compose logs -f --tail=100
+
+# 재시작
+cd /root/sports-analysis && docker compose restart
+
+# 상태 확인
+cd /root/sports-analysis && docker compose ps && docker stats --no-stream
+```
+
+### GitHub Actions Secrets 체크리스트
+
+- [ ] `HETZNER_SSH_KEY` - SSH 개인키
+- [ ] `TELEGRAM_BOT_TOKEN` - 텔레그램 봇 토큰
+- [ ] `TELEGRAM_CHAT_ID` - 텔레그램 채팅방 ID
+
+### 서버 .env 체크리스트
+
+- [ ] `OPENAI_API_KEY`
+- [ ] `ANTHROPIC_API_KEY`
+- [ ] `GOOGLE_API_KEY`
+- [ ] `DEEPSEEK_API_KEY`
+- [ ] `KIMI_API_KEY`
+- [ ] `TELEGRAM_BOT_TOKEN`
+- [ ] `TELEGRAM_CHAT_ID`
+- [ ] `KSPO_TODZ_API_KEY`
+
+---
+
+**문서 버전**: 2.0.0
+**최종 업데이트**: 2025-12-27
+**작성자**: AI Assistant
