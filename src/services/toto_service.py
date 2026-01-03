@@ -5,13 +5,18 @@
 - 야구 승1패 (14경기)
 """
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Match
 from src.services.predictor import AdvancedStatisticalPredictor
+from src.services.round_manager import RoundManager
+from src.services.underdog_detector import UnderdogDetector
+from src.services.ai_orchestrator import AIOrchestrator
+from src.services.ai.models import MatchContext
+from src.services.team_stats_service import get_team_stats_service
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +40,10 @@ class TotoService:
 
     def __init__(self):
         self.predictor = AdvancedStatisticalPredictor()
+        self.round_manager = RoundManager()
+        self.underdog_detector = UnderdogDetector()
+        self.ai_orchestrator = AIOrchestrator()
+        self.stats_service = get_team_stats_service()  # 실시간 팀 통계 서비스
 
     async def get_toto_package(
         self,
@@ -43,7 +52,7 @@ class TotoService:
         round_number: Optional[int] = None
     ) -> Dict:
         """
-        토토 14경기 패키지 가져오기
+        토토 14경기 패키지 가져오기 (RoundManager 사용)
 
         Args:
             session: 데이터베이스 세션
@@ -53,43 +62,90 @@ class TotoService:
         Returns:
             14경기 패키지 + AI 예측 + 조합 추천
         """
-        # 1. 회차 결정
-        if round_number is None:
-            round_number = await self._get_latest_round(session, game_type)
+        try:
+            # 1. RoundManager에서 경기 데이터 가져오기
+            if game_type == TotoGame.SOCCER_WDL:
+                round_info, games = await self.round_manager.get_soccer_wdl_round()
+            elif game_type == TotoGame.BASKETBALL_W5L:
+                round_info, games = await self.round_manager.get_basketball_w5l_round()
+            else:
+                return {
+                    "success": False,
+                    "error": f"지원하지 않는 게임 타입: {game_type}",
+                    "game_type": game_type,
+                    "matches": []
+                }
 
-        # 2. 14경기 가져오기
-        matches = await self._get_matches(session, game_type, round_number)
+            if not games:
+                return {
+                    "success": False,
+                    "error": f"{game_type} 경기 데이터를 가져올 수 없습니다",
+                    "game_type": game_type,
+                    "round_number": round_info.round_number if round_info else None,
+                    "matches": []
+                }
 
-        if not matches:
+            # 2. 각 경기 AI 예측 + 언더독 감지
+            match_predictions = []
+            all_upset_analyses = []
+
+            for game in games:
+                # AI 앙상블 분석
+                prediction, ai_result = await self._predict_game_with_ai(game, game_type)
+
+                # 언더독 감지
+                underdog_analysis = self.underdog_detector.analyze_game(
+                    predictions=prediction.get("probabilities", {}),
+                    ai_opinions=ai_result.ai_opinions if ai_result else None,
+                )
+
+                # 예측 결과에 언더독 정보 추가
+                prediction["is_underdog"] = underdog_analysis.is_underdog_game
+                prediction["upset_probability"] = underdog_analysis.upset_probability
+                prediction["multi_recommended"] = underdog_analysis.recommendation == "복수"
+                prediction["multi_picks"] = underdog_analysis.multi_picks
+
+                match_predictions.append({
+                    "match": self._format_game(game, round_info),
+                    "prediction": prediction,
+                    "underdog_analysis": underdog_analysis,
+                })
+
+                all_upset_analyses.append({
+                    "game_number": game.get("row_num"),
+                    "upset_prob": underdog_analysis.upset_probability,
+                    "is_underdog": underdog_analysis.is_underdog_game,
+                })
+
+            # 3. 복수 베팅 경기 선정 (상위 4경기)
+            multi_games = sorted(
+                all_upset_analyses,
+                key=lambda x: x["upset_prob"],
+                reverse=True
+            )[:4]
+            multi_game_numbers = [g["game_number"] for g in multi_games if g["is_underdog"]]
+
+            # 4. 조합 추천 생성
+            recommendations = self._generate_combinations(match_predictions, game_type, multi_game_numbers)
+
             return {
-                "success": False,
-                "error": f"{game_type} {round_number}회차 경기가 없습니다",
+                "success": True,
                 "game_type": game_type,
-                "round_number": round_number,
-                "matches": []
+                "round_number": round_info.round_number,
+                "total_matches": len(games),
+                "matches": match_predictions,
+                "recommendations": recommendations,
+                "fetched_at": datetime.now().isoformat()
             }
 
-        # 3. 각 경기 AI 예측
-        match_predictions = []
-        for match in matches:
-            prediction = await self._predict_match(match, game_type)
-            match_predictions.append({
-                "match": self._format_match(match),
-                "prediction": prediction
-            })
-
-        # 4. 조합 추천 생성
-        recommendations = self._generate_combinations(match_predictions, game_type)
-
-        return {
-            "success": True,
-            "game_type": game_type,
-            "round_number": round_number,
-            "total_matches": len(matches),
-            "matches": match_predictions,
-            "recommendations": recommendations,
-            "fetched_at": datetime.now().isoformat()
-        }
+        except Exception as e:
+            logger.error(f"토토 패키지 가져오기 실패: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "game_type": game_type,
+                "matches": []
+            }
 
     async def _get_latest_round(
         self,
@@ -124,6 +180,247 @@ class TotoService:
         result = await session.execute(stmt)
         matches = result.scalars().all()
         return list(matches)
+
+    async def _predict_game_with_ai(
+        self,
+        game: Dict,
+        game_type: str
+    ) -> Tuple[Dict, Optional[any]]:
+        """
+        AI 앙상블 기반 경기 예측
+
+        Returns:
+            (prediction_dict, ai_result)
+        """
+        home_team = game.get("hteam_han_nm", "Unknown")
+        away_team = game.get("ateam_han_nm", "Unknown")
+
+        # MatchContext 생성
+        match_date = game.get("match_ymd", "")
+        match_time = game.get("match_tm", "0000")
+        start_time = f"{match_date} {match_time[:2]}:{match_time[2:] if len(match_time) >= 4 else '00'}"
+
+        from src.services.ai.models import SportType
+        sport_type = SportType.SOCCER if game_type == TotoGame.SOCCER_WDL else SportType.BASKETBALL
+
+        context = MatchContext(
+            match_id=game.get('row_num', 0),
+            home_team=home_team,
+            away_team=away_team,
+            league=game.get("leag_han_nm", ""),
+            start_time=start_time,
+            sport_type=sport_type,
+        )
+
+        try:
+            # AI 앙상블 분석
+            ai_result = await self.ai_orchestrator.analyze_match(context)
+
+            # AI 결과를 예측 형식으로 변환
+            consensus = ai_result.consensus
+
+            if game_type == TotoGame.SOCCER_WDL:
+                # 축구: 승무패
+                prediction = {
+                    "home_prob": round(consensus.home_prob or 33.3, 1),
+                    "draw_prob": round(consensus.draw_prob or 33.3, 1),
+                    "away_prob": round(consensus.away_prob or 33.3, 1),
+                    "confidence": round(consensus.confidence, 1),
+                    "recommended": self._map_winner_to_pick(consensus.winner.value, game_type),
+                    "reasoning": consensus.reasoning or "AI 앙상블 분석",
+                    "probabilities": {
+                        "home": consensus.home_prob or 33.3,
+                        "draw": consensus.draw_prob or 33.3,
+                        "away": consensus.away_prob or 33.3,
+                    },
+                    "ai_count": len(ai_result.ai_opinions),
+                }
+            else:
+                # 농구: 승5패
+                home_prob = round(consensus.home_prob or 40.0, 1)
+                away_prob = round(consensus.away_prob or 40.0, 1)
+                diff_prob = round(100 - home_prob - away_prob, 1)
+
+                prediction = {
+                    "home_prob": home_prob,
+                    "diff_prob": diff_prob,
+                    "away_prob": away_prob,
+                    "confidence": round(consensus.confidence, 1),
+                    "recommended": self._map_winner_to_pick(consensus.winner.value, game_type),
+                    "reasoning": consensus.reasoning or "AI 앙상블 분석",
+                    "probabilities": {
+                        "home": home_prob,
+                        "diff": diff_prob,
+                        "away": away_prob,
+                    },
+                    "ai_count": len(ai_result.ai_opinions),
+                }
+
+            return prediction, ai_result
+
+        except Exception as e:
+            logger.error(f"AI 분석 실패: {e}, fallback to basic prediction")
+            # Fallback: 기본 예측
+            basic_pred = await self._predict_game(game, game_type)
+            return basic_pred, None
+
+    def _map_winner_to_pick(self, winner: str, game_type: str) -> str:
+        """AI winner를 베팅 픽으로 변환"""
+        if game_type == TotoGame.SOCCER_WDL:
+            mapping = {"HOME": "home", "DRAW": "draw", "AWAY": "away"}
+            return mapping.get(winner, "draw")
+        else:
+            # 농구
+            mapping = {"HOME": "home", "DRAW": "5point", "AWAY": "away"}
+            return mapping.get(winner, "5point")
+
+    async def _predict_game(
+        self,
+        game: Dict,
+        game_type: str
+    ) -> Dict:
+        """
+        경기 예측 (RoundManager의 GameInfo 사용)
+
+        Returns:
+            game_type에 따라 다른 예측 결과
+            - 축구: home/draw/away 확률
+            - 농구: home/5point/away 확률
+        """
+        # 실시간 팀 통계 가져오기
+        home_team = game.get("hteam_han_nm", "Unknown")
+        away_team = game.get("ateam_han_nm", "Unknown")
+        league = game.get("leag_han_nm", "")
+
+        sport_type = "soccer" if game_type == TotoGame.SOCCER_WDL else "basketball"
+
+        # 홈팀/원정팀 통계 조회 (캐싱됨)
+        home_team_stats = await self.stats_service.get_team_stats(
+            team_name=home_team,
+            league=league,
+            sport_type=sport_type,
+            is_home=True
+        )
+        away_team_stats = await self.stats_service.get_team_stats(
+            team_name=away_team,
+            league=league,
+            sport_type=sport_type,
+            is_home=False
+        )
+
+        # TeamStats → predictor 입력 형식 변환
+        if sport_type == "soccer":
+            home_stats = {
+                "xg": home_team_stats.avg_goals_scored or 1.5,
+                "xga": home_team_stats.avg_goals_conceded or 1.5,
+                "momentum": home_team_stats.recent_form / 100  # 0-100 → 0-1
+            }
+            away_stats = {
+                "xg": away_team_stats.avg_goals_scored or 1.3,
+                "xga": away_team_stats.avg_goals_conceded or 1.4,
+                "momentum": away_team_stats.recent_form / 100
+            }
+        else:  # basketball
+            home_stats = {
+                "xg": (home_team_stats.avg_points_scored or 105.0) / 100,  # 정규화
+                "xga": (home_team_stats.avg_points_conceded or 105.0) / 100,
+                "momentum": home_team_stats.recent_form / 100
+            }
+            away_stats = {
+                "xg": (away_team_stats.avg_points_scored or 105.0) / 100,
+                "xga": (away_team_stats.avg_points_conceded or 105.0) / 100,
+                "momentum": away_team_stats.recent_form / 100
+            }
+
+        # Poisson 기반 예측
+        try:
+            prediction = self.predictor.predict_score_probabilities(
+                home_stats,
+                away_stats
+            )
+        except Exception as e:
+            logger.error(f"예측 실패: {e}")
+            # 기본값
+            if game_type == TotoGame.SOCCER_WDL:
+                return {
+                    "home_prob": 43.4,
+                    "draw_prob": 37.1,
+                    "away_prob": 19.5,
+                    "confidence": 43.4,
+                    "recommended": "draw",
+                    "reasoning": "기본 확률 사용"
+                }
+            else:  # 농구
+                return {
+                    "home_prob": 43.4,
+                    "diff_prob": 37.1,  # 5점차
+                    "away_prob": 19.5,
+                    "confidence": 43.4,
+                    "recommended": "5point",
+                    "reasoning": "기본 확률 사용"
+                }
+
+        # 예측 결과 변환
+        probs = prediction["probabilities"]
+
+        if game_type == TotoGame.SOCCER_WDL:
+            # 축구: 승무패
+            home_prob = round(probs["home"] * 100, 1)
+            draw_prob = round(probs["draw"] * 100, 1)
+            away_prob = round(probs["away"] * 100, 1)
+
+            # 추천 (가장 높은 확률)
+            max_prob = max(home_prob, draw_prob, away_prob)
+            if max_prob == home_prob and home_prob > 45:
+                recommended = "home"
+            elif max_prob == away_prob and away_prob > 45:
+                recommended = "away"
+            elif draw_prob > 35:
+                recommended = "draw"
+            else:
+                recommended = "draw"  # 기본값
+
+            return {
+                "home_prob": home_prob,
+                "draw_prob": draw_prob,
+                "away_prob": away_prob,
+                "confidence": round(max_prob, 1),
+                "recommended": recommended,
+                "reasoning": self._generate_reasoning(home_prob, draw_prob, away_prob)
+            }
+
+        elif game_type == TotoGame.BASKETBALL_W5L:
+            # 농구: 승/5점차/패
+            home_prob = round(probs["home"] * 100, 1)
+            away_prob = round(probs["away"] * 100, 1)
+
+            # 5점차 확률 계산 (간단히 추정)
+            diff_prob = round(100 - home_prob - away_prob, 1)
+            if diff_prob < 0:
+                diff_prob = 15.0
+                home_prob = round((100 - diff_prob) * (probs["home"] / (probs["home"] + probs["away"])), 1)
+                away_prob = round(100 - home_prob - diff_prob, 1)
+
+            max_prob = max(home_prob, diff_prob, away_prob)
+            if max_prob == home_prob and home_prob > 45:
+                recommended = "home"
+            elif max_prob == away_prob and away_prob > 45:
+                recommended = "away"
+            elif diff_prob > 30:
+                recommended = "5point"
+            else:
+                recommended = "5point"  # 기본값
+
+            return {
+                "home_prob": home_prob,
+                "diff_prob": diff_prob,  # 5점차
+                "away_prob": away_prob,
+                "confidence": round(max_prob, 1),
+                "recommended": recommended,
+                "reasoning": f"홈팀 승리 {home_prob}%, 5점차 {diff_prob}%, 원정 승리 {away_prob}%"
+            }
+
+        return {}
 
     async def _predict_match(
         self,
@@ -270,8 +567,24 @@ class TotoService:
 
         return {}
 
+    def _format_game(self, game: Dict, round_info) -> Dict:
+        """경기 정보 포맷팅 (RoundManager의 KSPO API 형식 Dict 사용)"""
+        # KSPO API 형식:
+        # {"row_num": 1, "hteam_han_nm": "제노아", "ateam_han_nm": "피사SC", ...}
+        return {
+            "id": game.get("row_num"),
+            "game_number": game.get("row_num"),
+            "home_team": game.get("hteam_han_nm"),
+            "away_team": game.get("ateam_han_nm"),
+            "league": game.get("leag_han_nm", round_info.game_type if hasattr(round_info, 'game_type') else ""),
+            "match_date": game.get("match_ymd", ""),
+            "match_time": game.get("match_tm", ""),
+            "sport": game.get("match_sport_han_nm", ""),
+            "status": "예정"
+        }
+
     def _format_match(self, match: Match) -> Dict:
-        """경기 정보 포맷팅"""
+        """경기 정보 포맷팅 (DB Match 모델 사용 - 레거시)"""
         return {
             "id": match.id,
             "home_team": match.home_team_id,  # 실제로는 팀 이름 필요
@@ -303,13 +616,16 @@ class TotoService:
     def _generate_combinations(
         self,
         match_predictions: List[Dict],
-        game_type: str
+        game_type: str,
+        multi_game_numbers: List[int] = None
     ) -> List[Dict]:
         """
         AI 추천 조합 생성
 
         14경기 중 신뢰도 높은 경기들로 3가지 조합 추천
+        + 복수 베팅 경기 정보
         """
+        multi_game_numbers = multi_game_numbers or []
         # 신뢰도 순으로 정렬
         sorted_matches = sorted(
             match_predictions,
@@ -366,27 +682,38 @@ class TotoService:
                     "confidence": pred.get("confidence", 0)
                 })
 
+        # 복수 베팅 정보 추가
+        multi_betting_info = {
+            "multi_game_count": len(multi_game_numbers),
+            "multi_game_numbers": multi_game_numbers,
+            "total_combinations": 2 ** len(multi_game_numbers) if multi_game_numbers else 1,
+            "description": f"{len(multi_game_numbers)}경기 복수 베팅 → {2 ** len(multi_game_numbers) if multi_game_numbers else 1}조합",
+        }
+
         return [
             {
                 "name": "안전 조합",
                 "description": "신뢰도 70% 이상 경기만 선택",
                 "selections": safe_combination[:min(14, len(safe_combination))],
                 "expected_win_rate": self._calculate_expected_win_rate(safe_combination[:14]),
-                "risk_level": "low"
+                "risk_level": "low",
+                "multi_betting": multi_betting_info,
             },
             {
                 "name": "균형 조합",
                 "description": "신뢰도 상위 경기 중심",
                 "selections": balanced_combination[:min(14, len(balanced_combination))],
                 "expected_win_rate": self._calculate_expected_win_rate(balanced_combination[:14]),
-                "risk_level": "medium"
+                "risk_level": "medium",
+                "multi_betting": multi_betting_info,
             },
             {
-                "name": "고배당 도전",
-                "description": "높은 배당 기대 조합",
+                "name": "고배당 도전 + 이변 대비",
+                "description": f"높은 배당 기대 조합 + {len(multi_game_numbers)}경기 복수",
                 "selections": risky_combination[:min(14, len(risky_combination))],
                 "expected_win_rate": self._calculate_expected_win_rate(risky_combination[:14]),
-                "risk_level": "high"
+                "risk_level": "high",
+                "multi_betting": multi_betting_info,
             }
         ]
 

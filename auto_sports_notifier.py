@@ -31,6 +31,7 @@ from src.services.round_manager import RoundManager, RoundInfo
 from src.services.telegram_notifier import TelegramNotifier
 from src.services.ai_orchestrator import AIOrchestrator
 from src.services.ai.models import MatchContext, SportType
+from src.services.prediction_tracker import prediction_tracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -119,7 +120,10 @@ class AutoSportsNotifier:
             # 3. 복식 4경기 선정
             multi_games = self._select_multi_games(predictions, game_type="soccer")
 
-            # 4. 텔레그램 메시지 생성 및 전송
+            # 4. 예측 저장 (적중률 추적용)
+            self._save_predictions(round_info, predictions, multi_games, "soccer_wdl")
+
+            # 5. 텔레그램 메시지 생성 및 전송
             message = self._format_soccer_message(round_info, predictions, multi_games)
 
             if test_mode:
@@ -167,7 +171,10 @@ class AutoSportsNotifier:
             # 3. 복식 4경기 선정
             multi_games = self._select_multi_games(predictions, game_type="basketball")
 
-            # 4. 텔레그램 메시지 생성 및 전송
+            # 4. 예측 저장 (적중률 추적용)
+            self._save_predictions(round_info, predictions, multi_games, "basketball_w5l")
+
+            # 5. 텔레그램 메시지 생성 및 전송
             message = self._format_basketball_message(round_info, predictions, multi_games)
 
             if test_mode:
@@ -488,6 +495,51 @@ class AutoSportsNotifier:
                 pred.multi_selections = match[1].split("/")
 
         return multi_games
+
+    # ==================== 예측 저장 ====================
+
+    def _save_predictions(
+        self,
+        round_info: RoundInfo,
+        predictions: List[GamePrediction],
+        multi_games: List[Tuple[int, str, str]],
+        game_type: str
+    ):
+        """예측 데이터 저장 (적중률 추적용)"""
+        try:
+            # GamePrediction → Dict 변환
+            pred_dicts = []
+            for pred in predictions:
+                pred_dict = {
+                    "game_number": pred.game_number,
+                    "home_team": pred.home_team,
+                    "away_team": pred.away_team,
+                    "match_date": getattr(round_info, 'match_date', ''),
+                    "match_time": pred.match_time,
+                    "predicted": pred.recommended,
+                    "confidence": pred.confidence,
+                    "multi_selections": pred.multi_selections if pred.is_multi else [],
+                }
+                pred_dicts.append(pred_dict)
+
+            # 복수 베팅 경기 번호 추출
+            multi_nums = [m[0] for m in multi_games]
+
+            # 저장
+            success = prediction_tracker.save_prediction(
+                round_info=round_info,
+                predictions=pred_dicts,
+                multi_games=multi_nums,
+                game_type=game_type
+            )
+
+            if success:
+                logger.info(f"💾 예측 저장 완료: {round_info.round_number}회차 ({game_type})")
+            else:
+                logger.warning(f"예측 저장 실패: {round_info.round_number}회차 ({game_type})")
+
+        except Exception as e:
+            logger.error(f"예측 저장 오류: {e}")
 
     # ==================== 메시지 포맷팅 ====================
 

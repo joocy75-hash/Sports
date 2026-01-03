@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sports-scheduler
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./.state:/app/.state
+      - ./scheduler.log:/app/scheduler.log
+    command: python scheduler_main.py
+    depends_on:
+      - db
+    networks:
+      - sports-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: sports-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: sports_analysis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-yourpassword}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sports-network
+    ports:
+      - "5432:5432"
+
+  # API 서버 (선택사항)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sports-api
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./.state:/app/.state
+    command: python -m uvicorn src.api.unified_server:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - db
+    networks:
+      - sports-network
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
+
+networks:
+  sports-network:
+    driver: bridge

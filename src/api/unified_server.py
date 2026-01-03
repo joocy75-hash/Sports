@@ -2657,6 +2657,63 @@ async def get_toto_baseball(round_number: Optional[int] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/v1/toto/notify-telegram")
+async def notify_toto_telegram(
+    game_type: str = "soccer",  # "soccer" | "basketball"
+    round_number: Optional[int] = None
+):
+    """
+    토토 분석 결과를 텔레그램으로 전송
+
+    Body Parameters:
+        game_type: "soccer" (축구 승무패) | "basketball" (농구 승5패)
+        round_number: 회차 번호 (None이면 최신 회차)
+    """
+    try:
+        from src.services.toto_telegram_notifier import TotoTelegramNotifier
+
+        # 토토 패키지 가져오기
+        async with get_session() as session:
+            toto_game_type = TotoGame.SOCCER_WDL if game_type == "soccer" else TotoGame.BASKETBALL_W5L
+            result = await toto_service.get_toto_package(
+                session=session,
+                game_type=toto_game_type,
+                round_number=round_number,
+            )
+
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail=result.get("error", "데이터 없음"))
+
+        # 복수 베팅 경기 추출
+        multi_games = []
+        for rec in result.get("recommendations", []):
+            multi_betting = rec.get("multi_betting", {})
+            multi_games = multi_betting.get("multi_game_numbers", [])
+            if multi_games:
+                break
+
+        # 텔레그램 전송
+        telegram_notifier = TotoTelegramNotifier()
+        await telegram_notifier.send_toto_analysis(
+            game_type=result["game_type"],
+            round_number=result["round_number"],
+            matches=result["matches"],
+            multi_games=multi_games,
+        )
+
+        return {
+            "success": True,
+            "message": f"{result['game_type']} {result['round_number']}회차 텔레그램 전송 완료",
+            "round_number": result["round_number"],
+            "total_matches": result["total_matches"],
+            "multi_count": len(multi_games),
+        }
+
+    except Exception as e:
+        logger.error(f"텔레그램 전송 오류: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================================
 # Perplexity AI API - 실시간 스포츠 정보 검색
 # ============================================================================
