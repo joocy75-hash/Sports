@@ -144,8 +144,8 @@ class BetmanCrawler:
 
             # 베트맨 메인 페이지에서 축구 승무패 링크 찾기
             logger.info("베트맨 메인 페이지 로딩")
-            await page.goto(self.base_url, wait_until="networkidle", timeout=30000)
-            await asyncio.sleep(2)
+            await page.goto(self.base_url, wait_until="domcontentloaded", timeout=60000)
+            await asyncio.sleep(3)
 
             # 축구 승무패 링크 찾기 (G011)
             game_url = await page.evaluate("""
@@ -164,13 +164,13 @@ class BetmanCrawler:
 
             if game_url:
                 logger.info(f"축구 승무패 게임 URL 발견: {game_url}")
-                await page.goto(game_url, wait_until="networkidle", timeout=30000)
-                await asyncio.sleep(3)
+                await page.goto(game_url, wait_until="domcontentloaded", timeout=60000)
+                await asyncio.sleep(5)
             else:
                 logger.warning("축구 승무패 링크를 찾지 못함 - 기본 URL 사용")
                 url = f"{self.base_url}/main/mainPage/gamebuy/buyableGameList.do"
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-                await asyncio.sleep(3)
+                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                await asyncio.sleep(5)
 
             # 페이지 파싱
             round_info, games = await self._parse_soccer_wdl_page(page)
@@ -423,8 +423,8 @@ class BetmanCrawler:
 
             # 베트맨 메인 페이지에서 농구 승5패 링크 찾기
             logger.info("베트맨 메인 페이지 로딩")
-            await page.goto(self.base_url, wait_until="networkidle", timeout=30000)
-            await asyncio.sleep(2)
+            await page.goto(self.base_url, wait_until="domcontentloaded", timeout=60000)
+            await asyncio.sleep(3)
 
             # 농구 승5패 링크 찾기 (G027)
             game_url = await page.evaluate("""
@@ -443,13 +443,13 @@ class BetmanCrawler:
 
             if game_url:
                 logger.info(f"농구 승5패 게임 URL 발견: {game_url}")
-                await page.goto(game_url, wait_until="networkidle", timeout=30000)
-                await asyncio.sleep(3)
+                await page.goto(game_url, wait_until="domcontentloaded", timeout=60000)
+                await asyncio.sleep(5)
             else:
                 logger.warning("농구 승5패 링크를 찾지 못함 - 기본 URL 사용")
                 url = f"{self.base_url}/main/mainPage/gamebuy/buyableGameList.do"
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-                await asyncio.sleep(3)
+                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                await asyncio.sleep(5)
 
             # 페이지 파싱
             round_info, games = await self._parse_basketball_w5l_page(page)
