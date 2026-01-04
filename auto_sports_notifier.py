@@ -112,6 +112,12 @@ class AutoSportsNotifier:
                 logger.warning("축구 승무패 경기가 없습니다.")
                 return False
 
+            # ⚠️ 14경기 검증 (치명적!)
+            if len(games) != 14:
+                logger.error(f"🚨 치명적: 축구 {len(games)}경기 수집 (14경기 필요!)")
+                logger.error("   → 텔레그램 전송 차단 (불완전한 예측 방지)")
+                return False
+
             logger.info(f"✅ {round_info.round_number}회차 {len(games)}경기 수집 완료")
 
             # 2. AI 분석
@@ -161,6 +167,12 @@ class AutoSportsNotifier:
 
             if not games:
                 logger.warning("농구 승5패 경기가 없습니다.")
+                return False
+
+            # ⚠️ 14경기 검증 (치명적!)
+            if len(games) != 14:
+                logger.error(f"🚨 치명적: 농구 {len(games)}경기 수집 (14경기 필요!)")
+                logger.error("   → 텔레그램 전송 차단 (불완전한 예측 방지)")
                 return False
 
             logger.info(f"✅ {round_info.round_number}회차 {len(games)}경기 수집 완료")
