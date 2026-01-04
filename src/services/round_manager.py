@@ -125,14 +125,14 @@ class RoundManager:
             # 크롤러 캐시 우선 확인
             if source in ["auto", "crawler"] and cache_key in self._crawler_cache:
                 info, games = self._crawler_cache[cache_key]
-                if (datetime.now() - info.updated_at).seconds < 300:
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
                     logger.info(f"크롤러 캐시에서 축구 승무패 {info.round_number}회차 로드")
                     return info, games
 
             # API 캐시 확인
             if source in ["auto", "api"] and cache_key in self._cache:
                 info, games = self._cache[cache_key]
-                if (datetime.now() - info.updated_at).seconds < 300:
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
                     logger.info(f"API 캐시에서 축구 승무패 {info.round_number}회차 로드")
                     return info, games
 
@@ -199,14 +199,14 @@ class RoundManager:
             # 크롤러 캐시 우선 확인
             if source in ["auto", "crawler"] and cache_key in self._crawler_cache:
                 info, games = self._crawler_cache[cache_key]
-                if (datetime.now() - info.updated_at).seconds < 300:
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
                     logger.info(f"크롤러 캐시에서 농구 승5패 {info.round_number}회차 로드")
                     return info, games
 
             # API 캐시 확인
             if source in ["auto", "api"] and cache_key in self._cache:
                 info, games = self._cache[cache_key]
-                if (datetime.now() - info.updated_at).seconds < 300:
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
                     logger.info(f"API 캐시에서 농구 승5패 {info.round_number}회차 로드")
                     return info, games
 

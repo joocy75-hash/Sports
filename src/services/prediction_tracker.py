@@ -95,8 +95,10 @@ class PredictionTracker:
             bool: 저장 성공 여부
         """
         try:
-            round_number = getattr(round_info, 'round_number', round_info.get('round_number', 0))
-            deadline_str = getattr(round_info, 'deadline', round_info.get('deadline', ''))
+            # RoundInfo 객체에서 필드 추출
+            round_number = getattr(round_info, 'round_number', 0)
+            deadline_obj = getattr(round_info, 'deadline', None)
+            deadline_str = deadline_obj
             if hasattr(deadline_str, 'isoformat'):
                 deadline_str = deadline_str.isoformat()
 
