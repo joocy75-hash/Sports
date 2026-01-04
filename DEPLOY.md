@@ -1,7 +1,19 @@
 # 스포츠 분석 시스템 배포 가이드
 
-> **최종 업데이트**: 2025-12-27
-> **현재 상태**: 운영 중 (5.161.112.248)
+> **최종 업데이트**: 2026-01-05
+> **현재 상태**: 운영 중 (한국 서버 - 141.164.55.245)
+> **🚨 중요**: 독일 서버(5.161.112.248)는 폐기되었습니다
+
+---
+
+## ⚠️ 서버 마이그레이션 공지 (2026-01-05)
+
+**독일 서버 (5.161.112.248) → 한국 서버 (141.164.55.245)**
+
+- **이유**: Geo-blocking으로 betman.co.kr 접근 불가
+- **변경일**: 2026-01-05
+- **영향**: 모든 배포 스크립트 및 문서 업데이트됨
+- **조치 필요**: GitHub Actions secrets 확인 필요
 
 ---
 
@@ -20,21 +32,36 @@
 
 ## 1. 서버 정보
 
+### 현재 프로덕션 서버 (✅ 활성)
+
 | 항목 | 값 |
 |------|-----|
-| **IP** | `5.161.112.248` |
-| **이름** | deep-server |
-| **위치** | Ashburn, VA (USA) |
-| **사양** | CPX31 (4 vCPU / 8 GB RAM / 160 GB SSD) |
-| **OS** | Ubuntu 24.04 LTS |
-| **Docker** | 29.1.3 |
-| **Docker Compose** | v5.0.0 |
+| **IP** | `141.164.55.245` |
+| **이름** | sports-kr-server |
+| **위치** | Seoul, South Korea (Vultr) |
+| **사양** | 2 vCPU / 4 GB RAM / 80 GB SSD |
+| **OS** | Ubuntu 22.04 LTS |
+| **Docker** | Latest |
+| **프로젝트 경로** | `/opt/sports-analysis` |
 
 ### SSH 접속
 
 ```bash
-ssh root@5.161.112.248
+ssh root@141.164.55.245
+# SSH 키 인증 설정됨 (비밀번호 불필요)
 ```
+
+---
+
+### 구 서버 (❌ 폐기됨)
+
+| 항목 | 값 |
+|------|-----|
+| **IP** | ~~`5.161.112.248`~~ |
+| **상태** | **폐기됨 (2026-01-05)** |
+| **폐기 사유** | betman.co.kr Geo-blocking |
+
+**⚠️ 절대 사용 금지**: 이 서버에 배포하지 마세요
 
 ---
 
@@ -102,10 +129,10 @@ cat ~/.ssh/id_rsa
 ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/hetzner_deploy -N ""
 
 # 2. 공개키를 서버에 등록
-ssh-copy-id -i ~/.ssh/hetzner_deploy.pub root@5.161.112.248
+ssh-copy-id -i ~/.ssh/hetzner_deploy.pub root@141.164.55.245
 
 # 3. 접속 테스트
-ssh -i ~/.ssh/hetzner_deploy root@5.161.112.248 "echo '접속 성공!'"
+ssh -i ~/.ssh/hetzner_deploy root@141.164.55.245 "echo '접속 성공!'"
 
 # 4. 개인키 내용 확인 후 GitHub Secrets에 등록
 cat ~/.ssh/hetzner_deploy
@@ -159,10 +186,10 @@ cd /Users/mr.joo/Desktop/스포츠분석
 
 ```bash
 # 1. 서버 접속
-ssh root@5.161.112.248
+ssh root@141.164.55.245
 
 # 2. 프로젝트 디렉토리 이동
-cd /root/sports-analysis
+cd /opt/sports-analysis
 
 # 3. 최신 코드 가져오기 (Git 사용 시)
 git pull origin main
@@ -194,7 +221,7 @@ rsync -avz --progress \
     --exclude='deepseek_env' \
     --exclude='.DS_Store' \
     /Users/mr.joo/Desktop/스포츠분석/ \
-    root@5.161.112.248:/root/sports-analysis/
+    root@141.164.55.245:/opt/sports-analysis/
 ```
 
 ---
@@ -204,7 +231,7 @@ rsync -avz --progress \
 ### 5.1 서버의 .env 파일 위치
 
 ```
-/root/sports-analysis/.env
+/opt/sports-analysis/.env
 ```
 
 ### 5.2 필수 환경 변수
@@ -235,18 +262,18 @@ KSPO_TODZ_API_KEY=your_api_key_here
 
 ```bash
 # 로컬 .env를 서버에 복사
-scp /Users/mr.joo/Desktop/스포츠분석/.env root@5.161.112.248:/root/sports-analysis/.env
+scp /Users/mr.joo/Desktop/스포츠분석/.env root@141.164.55.245:/opt/sports-analysis/.env
 ```
 
 ### 5.4 .env 수정 (서버에서)
 
 ```bash
-ssh root@5.161.112.248
-nano /root/sports-analysis/.env
+ssh root@141.164.55.245
+nano /opt/sports-analysis/.env
 # 수정 후 Ctrl+X → Y → Enter로 저장
 
 # 서비스 재시작 (환경변수 적용)
-cd /root/sports-analysis
+cd /opt/sports-analysis
 docker compose down && docker compose up -d
 ```
 
@@ -258,8 +285,8 @@ docker compose down && docker compose up -d
 
 ```bash
 # 서버 접속
-ssh root@5.161.112.248
-cd /root/sports-analysis
+ssh root@141.164.55.245
+cd /opt/sports-analysis
 
 # 상태 확인
 docker compose ps
@@ -364,7 +391,7 @@ docker compose build
 
 ```bash
 # 1. .env 확인
-cat /root/sports-analysis/.env | grep TELEGRAM
+cat /opt/sports-analysis/.env | grep TELEGRAM
 
 # 2. 토큰 테스트
 curl "https://api.telegram.org/bot<TOKEN>/getMe"
@@ -377,7 +404,7 @@ curl "https://api.telegram.org/bot<TOKEN>/getUpdates"
 
 ```bash
 # 모든 컨테이너, 볼륨, 이미지 삭제 후 재시작
-cd /root/sports-analysis
+cd /opt/sports-analysis
 docker compose down -v
 docker system prune -a
 docker compose up -d --build
@@ -390,7 +417,7 @@ docker compose up -d --build
 ### 8.1 디렉토리 구조 (서버)
 
 ```
-/root/sports-analysis/
+/opt/sports-analysis/
 ├── docker-compose.yml      # Docker 서비스 정의
 ├── Dockerfile              # 이미지 빌드 설정
 ├── .env                    # 환경 변수 (비공개)
@@ -465,16 +492,16 @@ services:
 
 ```bash
 # 서버 접속
-ssh root@5.161.112.248
+ssh root@141.164.55.245
 
 # 로그 확인
-cd /root/sports-analysis && docker compose logs -f --tail=100
+cd /opt/sports-analysis && docker compose logs -f --tail=100
 
 # 재시작
-cd /root/sports-analysis && docker compose restart
+cd /opt/sports-analysis && docker compose restart
 
 # 상태 확인
-cd /root/sports-analysis && docker compose ps && docker stats --no-stream
+cd /opt/sports-analysis && docker compose ps && docker stats --no-stream
 ```
 
 ### GitHub Actions Secrets 체크리스트
@@ -496,6 +523,16 @@ cd /root/sports-analysis && docker compose ps && docker stats --no-stream
 
 ---
 
-**문서 버전**: 2.0.0
-**최종 업데이트**: 2025-12-27
+**문서 버전**: 3.0.0 (서버 마이그레이션)
+**최종 업데이트**: 2026-01-05
 **작성자**: AI Assistant
+
+---
+
+## 변경 이력
+
+| 버전 | 날짜 | 변경 내용 |
+|------|------|----------|
+| 3.0.0 | 2026-01-05 | 한국 서버(141.164.55.245)로 마이그레이션, 독일 서버 폐기 |
+| 2.0.0 | 2025-12-27 | GitHub Actions 자동 배포 설정 |
+| 1.0.0 | 2025-12-24 | 초기 문서 작성 |
