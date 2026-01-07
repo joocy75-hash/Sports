@@ -1,0 +1,130 @@
+# Group A: Freqtrade Service
+# 4개의 독립적인 Freqtrade 봇 운영
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 1. Freqtrade Bot 1 (Main)
+  # ============================================
+  ft_bot1:
+    image: freqtradeorg/freqtrade:stable
+    container_name: ft_bot1
+    restart: always
+    read_only: true
+    volumes:
+      - ./user_data/bot1:/freqtrade/user_data
+    ports:
+      - "8080:8080"
+    # 리소스 제한 (1GB RAM, 0.5 CPU)
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    environment:
+      - TZ=Asia/Seoul
+    command: >
+      trade --config /freqtrade/user_data/config.json --strategy SampleStrategy
+    networks:
+      - freqtrade_net
+
+  # ============================================
+  # 2. Freqtrade Bot 2
+  # ============================================
+  ft_bot2:
+    image: freqtradeorg/freqtrade:stable
+    container_name: ft_bot2
+    restart: always
+    read_only: true
+    volumes:
+      - ./user_data/bot2:/freqtrade/user_data
+    ports:
+      - "8081:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    environment:
+      - TZ=Asia/Seoul
+    command: >
+      trade --config /freqtrade/user_data/config.json --strategy SampleStrategy
+    networks:
+      - freqtrade_net
+
+  # ============================================
+  # 3. Freqtrade Bot 3
+  # ============================================
+  ft_bot3:
+    image: freqtradeorg/freqtrade:stable
+    container_name: ft_bot3
+    restart: always
+    read_only: true
+    volumes:
+      - ./user_data/bot3:/freqtrade/user_data
+    ports:
+      - "8082:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    environment:
+      - TZ=Asia/Seoul
+    command: >
+      trade --config /freqtrade/user_data/config.json --strategy SampleStrategy
+    networks:
+      - freqtrade_net
+
+  # ============================================
+  # 4. Freqtrade Bot 4
+  # ============================================
+  ft_bot4:
+    image: freqtradeorg/freqtrade:stable
+    container_name: ft_bot4
+    restart: always
+    read_only: true
+    volumes:
+      - ./user_data/bot4:/freqtrade/user_data
+    ports:
+      - "8083:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    environment:
+      - TZ=Asia/Seoul
+    command: >
+      trade --config /freqtrade/user_data/config.json --strategy SampleStrategy
+    networks:
+      - freqtrade_net
+
+# ============================================
+# 네트워크 정의 (완전 격리)
+# ============================================
+networks:
+  freqtrade_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.10.0.0/16
+
+# ============================================
+# 볼륨 정의 (필요시)
+# ============================================
+# Freqtrade는 주로 호스트 볼륨을 사용하므로 여기서는 생략하거나 
+# 공통 데이터를 위한 볼륨을 정의할 수 있습니다.

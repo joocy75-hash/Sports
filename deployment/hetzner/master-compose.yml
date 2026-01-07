@@ -1,0 +1,43 @@
+# Master Orchestration for Deep-Server
+# Group A, B, C 서비스를 통합 관리합니다.
+
+include:
+  - path: ./group_a_freqtrade/docker-compose.yml
+  - path: ./group_b_automation/docker-compose.yml
+  - path: ./group_c_ai_trading/docker-compose.yml
+
+# 전체 공통 설정 (필요시)
+# 예: 모든 서비스가 공유하는 리버스 프록시(Nginx) 등
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: shared_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./shared/nginx/conf.d:/etc/nginx/conf.d
+      - ./shared/nginx/certs:/etc/nginx/certs
+      - ./shared/nginx/html:/usr/share/nginx/html
+    networks:
+      - freqtrade_net
+      - automation_net
+      - ai_trading_net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+# 네트워크 연결 (Nginx가 모든 네트워크에 접근할 수 있도록 함)
+networks:
+  freqtrade_net:
+    external: true
+    name: group_a_freqtrade_freqtrade_net
+  automation_net:
+    external: true
+    name: group_b_automation_automation_net
+  ai_trading_net:
+    external: true
+    name: group_c_ai_trading_ai_trading_net
