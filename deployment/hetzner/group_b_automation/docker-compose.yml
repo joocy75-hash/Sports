@@ -100,49 +100,49 @@ services:
           cpus: '0.25'
 
   # ============================================
-  # 2. 네이버 블로그 자동화
+  # 2. 네이버 블로그 자동화 (일시 중지 - 코드 없음)
   # ============================================
-  naver-blog:
-    build:
-      context: ./naver_blog
-      dockerfile: Dockerfile
-    container_name: naver_blog
-    restart: always
-
-    # 리소스 제한 (256MB RAM, 0.25 CPU)
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.25'
-        reservations:
-          memory: 128M
-          cpus: '0.1'
-
-    environment:
-      - TZ=Asia/Seoul
-      - PYTHONUNBUFFERED=1
-      # 네이버 API 인증
-      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID:-}
-      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET:-}
-      # OpenAI (콘텐츠 생성용)
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-
-    volumes:
-      - naver_state:/app/.state
-      - ./naver_blog/logs:/app/logs
-
-    ports:
-      - "5002:8000"
-
-    networks:
-      - automation_net
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "3"
+  # naver-blog:
+  #   build:
+  #     context: ./naver_blog
+  #     dockerfile: Dockerfile
+  #   container_name: naver_blog
+  #   restart: always
+  #
+  #   # 리소스 제한 (256MB RAM, 0.25 CPU)
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #         cpus: '0.25'
+  #       reservations:
+  #         memory: 128M
+  #         cpus: '0.1'
+  #
+  #   environment:
+  #     - TZ=Asia/Seoul
+  #     - PYTHONUNBUFFERED=1
+  #     # 네이버 API 인증
+  #     - NAVER_CLIENT_ID=${NAVER_CLIENT_ID:-}
+  #     - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET:-}
+  #     # OpenAI (콘텐츠 생성용)
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #
+  #   volumes:
+  #     - naver_state:/app/.state
+  #     - ./naver_blog/logs:/app/logs
+  #
+  #   ports:
+  #     - "5002:8000"
+  #
+  #   networks:
+  #     - automation_net
+  #
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "3"
 
   # ============================================
   # 3. 트레이딩뷰 전략 수집기 (일시 중지 - 코드 없음)
