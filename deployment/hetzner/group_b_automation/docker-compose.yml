@@ -145,51 +145,51 @@ services:
         max-file: "3"
 
   # ============================================
-  # 3. 트레이딩뷰 전략 수집기
+  # 3. 트레이딩뷰 전략 수집기 (일시 중지 - 코드 없음)
   # ============================================
-  tradingview-collector:
-    build:
-      context: ./tradingview
-      dockerfile: Dockerfile
-    container_name: tv_collector
-    restart: always
-
-    # 리소스 제한 (256MB RAM, 0.25 CPU)
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.25'
-        reservations:
-          memory: 128M
-          cpus: '0.1'
-
-    environment:
-      - TZ=Asia/Seoul
-      - PYTHONUNBUFFERED=1
-      # TradingView 인증 (필요시)
-      - TV_USERNAME=${TV_USERNAME:-}
-      - TV_PASSWORD=${TV_PASSWORD:-}
-      # Telegram 알림
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-
-    volumes:
-      - tv_state:/app/.state
-      - ./tradingview/logs:/app/logs
-      - ./tradingview/strategies:/app/strategies
-
-    ports:
-      - "5003:8000"
-
-    networks:
-      - automation_net
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "3"
+  # tradingview-collector:
+  #   build:
+  #     context: ./tradingview
+  #     dockerfile: Dockerfile
+  #   container_name: tv_collector
+  #   restart: always
+  #
+  #   # 리소스 제한 (256MB RAM, 0.25 CPU)
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #         cpus: '0.25'
+  #       reservations:
+  #         memory: 128M
+  #         cpus: '0.1'
+  #
+  #   environment:
+  #     - TZ=Asia/Seoul
+  #     - PYTHONUNBUFFERED=1
+  #     # TradingView 인증 (필요시)
+  #     - TV_USERNAME=${TV_USERNAME:-}
+  #     - TV_PASSWORD=${TV_PASSWORD:-}
+  #     # Telegram 알림
+  #     - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+  #     - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+  #
+  #   volumes:
+  #     - tv_state:/app/.state
+  #     - ./tradingview/logs:/app/logs
+  #     - ./tradingview/strategies:/app/strategies
+  #
+  #   ports:
+  #     - "5003:8000"
+  #
+  #   networks:
+  #     - automation_net
+  #
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "3"
 
   # ============================================
   # 4. PostgreSQL Database (Sports 전용)
