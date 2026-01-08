@@ -32,6 +32,11 @@ from src.services.telegram_notifier import TelegramNotifier
 from src.services.ai_orchestrator import AIOrchestrator
 from src.services.ai.models import MatchContext, SportType
 from src.services.prediction_tracker import prediction_tracker
+from src.config.constants import (
+    UpsetDetectionConstants as UDC,
+    SystemConstants,
+    TelegramConstants,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -113,8 +118,8 @@ class AutoSportsNotifier:
                 return False
 
             # ⚠️ 14경기 검증 (치명적!)
-            if len(games) != 14:
-                logger.error(f"🚨 치명적: 축구 {len(games)}경기 수집 (14경기 필요!)")
+            if len(games) != SystemConstants.MAX_GAMES_PER_ROUND:
+                logger.error(f"🚨 치명적: 축구 {len(games)}경기 수집 ({SystemConstants.MAX_GAMES_PER_ROUND}경기 필요!)")
                 logger.error("   → 텔레그램 전송 차단 (불완전한 예측 방지)")
                 return False
 
@@ -170,8 +175,8 @@ class AutoSportsNotifier:
                 return False
 
             # ⚠️ 14경기 검증 (치명적!)
-            if len(games) != 14:
-                logger.error(f"🚨 치명적: 농구 {len(games)}경기 수집 (14경기 필요!)")
+            if len(games) != SystemConstants.MAX_GAMES_PER_ROUND:
+                logger.error(f"🚨 치명적: 농구 {len(games)}경기 수집 ({SystemConstants.MAX_GAMES_PER_ROUND}경기 필요!)")
                 logger.error("   → 텔레그램 전송 차단 (불완전한 예측 방지)")
                 return False
 
@@ -234,7 +239,7 @@ class AutoSportsNotifier:
         else:
             logger.info("📊 기본 확률 모델 사용 (AI API 키 없음)")
 
-        for i, game in enumerate(games[:14], 1):
+        for i, game in enumerate(games[:SystemConstants.MAX_GAMES_PER_ROUND], 1):
             home = game.get("hteam_han_nm", "홈팀")
             away = game.get("ateam_han_nm", "원정팀")
             match_tm = str(game.get("match_tm", "0000")).zfill(4)
@@ -406,7 +411,7 @@ class AutoSportsNotifier:
         self,
         predictions: List[GamePrediction],
         game_type: str,
-        max_multi: int = 4
+        max_multi: int = UDC.DEFAULT_MULTI_GAMES
     ) -> List[Tuple[int, str, str]]:
         """
         복식 베팅 경기 선정 (이변 가능성 높은 4경기)
@@ -430,45 +435,45 @@ class AutoSportsNotifier:
             prob_gap = probs[0] - probs[1]
 
             # 1. 확률 분포 애매함 (1위-2위 차이가 작을수록 높은 점수)
-            if prob_gap < 0.10:
-                upset_score += 50  # 매우 애매함
-            elif prob_gap < 0.15:
-                upset_score += 40
-            elif prob_gap < 0.20:
-                upset_score += 30
-            elif prob_gap < 0.25:
-                upset_score += 20
-            elif prob_gap < 0.30:
-                upset_score += 10
+            if prob_gap < UDC.PROB_GAP_VERY_HIGH:
+                upset_score += UDC.PROB_GAP_SCORE_VERY_HIGH  # 매우 애매함
+            elif prob_gap < UDC.PROB_GAP_HIGH:
+                upset_score += UDC.PROB_GAP_SCORE_HIGH
+            elif prob_gap < UDC.PROB_GAP_MEDIUM:
+                upset_score += UDC.PROB_GAP_SCORE_MEDIUM
+            elif prob_gap < UDC.PROB_GAP_LOW:
+                upset_score += UDC.PROB_GAP_SCORE_LOW
+            elif prob_gap < UDC.PROB_GAP_VERY_LOW:
+                upset_score += UDC.PROB_GAP_SCORE_VERY_LOW
 
             # 2. 신뢰도 기반 점수 (낮을수록 이변 가능성 높음)
-            if pred.confidence < 0.40:
-                upset_score += 40
-            elif pred.confidence < 0.45:
-                upset_score += 30
-            elif pred.confidence < 0.50:
-                upset_score += 20
-            elif pred.confidence < 0.55:
-                upset_score += 10
+            if pred.confidence < UDC.CONFIDENCE_VERY_LOW:
+                upset_score += UDC.CONFIDENCE_SCORE_VERY_LOW
+            elif pred.confidence < UDC.CONFIDENCE_LOW:
+                upset_score += UDC.CONFIDENCE_SCORE_LOW
+            elif pred.confidence < UDC.CONFIDENCE_MEDIUM:
+                upset_score += UDC.CONFIDENCE_SCORE_MEDIUM
+            elif pred.confidence < UDC.CONFIDENCE_HIGH:
+                upset_score += UDC.CONFIDENCE_SCORE_HIGH
 
             # 3. AI 불일치 (일치도 낮을수록 이변 가능성) - AI 사용 시에만
             if pred.ai_agreement > 0:
-                if pred.ai_agreement < 0.40:
-                    upset_score += 35
-                elif pred.ai_agreement < 0.50:
-                    upset_score += 25
-                elif pred.ai_agreement < 0.60:
-                    upset_score += 15
-                elif pred.ai_agreement < 0.70:
-                    upset_score += 5
+                if pred.ai_agreement < UDC.AI_AGREEMENT_VERY_LOW:
+                    upset_score += UDC.AI_AGREEMENT_SCORE_VERY_LOW
+                elif pred.ai_agreement < UDC.AI_AGREEMENT_LOW:
+                    upset_score += UDC.AI_AGREEMENT_SCORE_LOW
+                elif pred.ai_agreement < UDC.AI_AGREEMENT_MEDIUM:
+                    upset_score += UDC.AI_AGREEMENT_SCORE_MEDIUM
+                elif pred.ai_agreement < UDC.AI_AGREEMENT_HIGH:
+                    upset_score += UDC.AI_AGREEMENT_SCORE_HIGH
 
             # 4. 무승부/5 확률 (높을수록 이변 가능성)
-            if pred.prob_draw >= 0.30:
-                upset_score += 25
-            elif pred.prob_draw >= 0.25:
-                upset_score += 15
-            elif pred.prob_draw >= 0.20:
-                upset_score += 5
+            if pred.prob_draw >= UDC.DRAW_PROB_HIGH:
+                upset_score += UDC.DRAW_PROB_SCORE_HIGH
+            elif pred.prob_draw >= UDC.DRAW_PROB_MEDIUM:
+                upset_score += UDC.DRAW_PROB_SCORE_MEDIUM
+            elif pred.prob_draw >= UDC.DRAW_PROB_LOW:
+                upset_score += UDC.DRAW_PROB_SCORE_LOW
 
             # 상위 2개 선택지 결정
             if game_type == "soccer":
@@ -565,7 +570,7 @@ class AutoSportsNotifier:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         lines = []
-        lines.append(f"⚽ *축구토토 승무패 {round_info.round_number}회차*")
+        lines.append(f"{TelegramConstants.ICON_SOCCER} *축구토토 승무패 {round_info.round_number}회차*")
         lines.append(f"📅 {now_str}")
         lines.append("━" * 24)
         lines.append("")
@@ -586,12 +591,12 @@ class AutoSportsNotifier:
                     return "무승부"
 
             if pred.is_multi:
-                icon = "⚠️"
+                icon = TelegramConstants.ICON_MULTI_BET
                 team_picks = [code_to_team(s) for s in pred.multi_selections]
                 mark = f"*[{'/'.join(team_picks)}]*"
                 suffix = " [복수]"
             else:
-                icon = "🔒" if pred.confidence >= 0.55 else "📊"
+                icon = TelegramConstants.ICON_HIGH_CONFIDENCE if pred.confidence >= TelegramConstants.HIGH_CONFIDENCE_THRESHOLD_SOCCER else TelegramConstants.ICON_MEDIUM_CONFIDENCE
                 pick_name = code_to_team(pred.recommended)
                 mark = f"[{pick_name}]"
                 suffix = ""
@@ -614,7 +619,7 @@ class AutoSportsNotifier:
             else:
                 return "무"
 
-        if len(predictions) >= 14:
+        if len(predictions) >= SystemConstants.MAX_GAMES_PER_ROUND:
             line1 = " ".join([f"{i+1}:{get_pick_name(predictions[i])}" for i in range(7)])
             line2 = " ".join([f"{i+1}:{get_pick_name(predictions[i])}" for i in range(7, 14)])
             lines.append(f"`{line1}`")
@@ -660,7 +665,7 @@ class AutoSportsNotifier:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         lines = []
-        lines.append(f"🏀 *농구토토 승5패 {round_info.round_number}회차*")
+        lines.append(f"{TelegramConstants.ICON_BASKETBALL} *농구토토 승5패 {round_info.round_number}회차*")
         lines.append(f"📅 {now_str}")
         lines.append("━" * 24)
         lines.append("")
@@ -681,12 +686,12 @@ class AutoSportsNotifier:
                     return "접전"
 
             if pred.is_multi:
-                icon = "⚠️"
+                icon = TelegramConstants.ICON_MULTI_BET
                 team_picks = [code_to_team(s) for s in pred.multi_selections]
                 mark = f"*[{'/'.join(team_picks)}]*"
                 suffix = " [복수]"
             else:
-                icon = "🔒" if pred.confidence >= 0.50 else "📊"
+                icon = TelegramConstants.ICON_HIGH_CONFIDENCE if pred.confidence >= TelegramConstants.HIGH_CONFIDENCE_THRESHOLD_BASKETBALL else TelegramConstants.ICON_MEDIUM_CONFIDENCE
                 pick_name = code_to_team(pred.recommended)
                 mark = f"[{pick_name}]"
                 suffix = ""
@@ -709,7 +714,7 @@ class AutoSportsNotifier:
             else:
                 return "접전"
 
-        if len(predictions) >= 14:
+        if len(predictions) >= SystemConstants.MAX_GAMES_PER_ROUND:
             line1 = " ".join([f"{i+1}:{get_pick_name(predictions[i])}" for i in range(7)])
             line2 = " ".join([f"{i+1}:{get_pick_name(predictions[i])}" for i in range(7, 14)])
             lines.append(f"`{line1}`")
@@ -751,8 +756,8 @@ class AutoSportsNotifier:
         lines.append(f"• 접전(5) 최고: {max_5_pred.game_number}번 ({max_5_pred.prob_draw*100:.0f}%)")
 
         # 고신뢰 경기 수
-        high_conf = sum(1 for p in predictions if p.confidence >= 0.50)
-        lines.append(f"• 고신뢰(🔒) 경기: {high_conf}개")
+        high_conf = sum(1 for p in predictions if p.confidence >= TelegramConstants.HIGH_CONFIDENCE_THRESHOLD_BASKETBALL)
+        lines.append(f"• 고신뢰({TelegramConstants.ICON_HIGH_CONFIDENCE}) 경기: {high_conf}개")
 
         # 홈승 예측 수
         win_count = sum(1 for p in predictions if p.recommended == "승")
@@ -790,7 +795,7 @@ class AutoSportsNotifier:
 
         return results
 
-    async def run_scheduler(self, interval_hours: int = 6):
+    async def run_scheduler(self, interval_hours: int = SystemConstants.SCHEDULER_INTERVAL_DEFAULT):
         """스케줄러 모드 실행"""
         logger.info(f"⏰ 스케줄러 모드 시작 (간격: {interval_hours}시간)")
         logger.info("   - 새 회차 감지 시 자동 분석 및 알림")
@@ -822,7 +827,7 @@ async def main():
     parser.add_argument("--basketball", action="store_true", help="농구 승5패만 분석")
     parser.add_argument("--test", action="store_true", help="테스트 모드 (전송 안함)")
     parser.add_argument("--schedule", action="store_true", help="스케줄러 모드")
-    parser.add_argument("--interval", type=int, default=6, help="스케줄러 간격 (시간)")
+    parser.add_argument("--interval", type=int, default=SystemConstants.SCHEDULER_INTERVAL_DEFAULT, help="스케줄러 간격 (시간)")
 
     args = parser.parse_args()
 

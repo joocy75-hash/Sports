@@ -29,18 +29,9 @@ from .ai.models import (
     WinnerType,
     ConfidenceLevel,
 )
+from src.config.constants import AIModelWeights, SystemConstants
 
 logger = logging.getLogger(__name__)
-
-
-# AI 가중치 설정 (5개 AI 모델)
-AI_WEIGHTS = {
-    "gpt": 0.25,      # GPT-4o: OpenAI 주력 모델
-    "claude": 0.25,   # Claude: Anthropic 논리적 추론
-    "gemini": 0.20,   # Gemini: Google 빠른 분석
-    "deepseek": 0.15, # DeepSeek: 심층 분석
-    "kimi": 0.15,     # Kimi: 보조 분석
-}
 
 
 class AIOrchestrator:
@@ -54,7 +45,7 @@ class AIOrchestrator:
     def __init__(self):
         self.analyzers: Dict[str, BaseAIAnalyzer] = {}
         self.cache: Dict[str, AIAnalysisResult] = {}  # 메모리 캐시 (실제로는 Redis 권장)
-        self.cache_ttl = 3600  # 1시간 캐시
+        self.cache_ttl = SystemConstants.CACHE_TTL_LONG  # 1시간 캐시
 
         self._init_analyzers()
 
@@ -215,12 +206,15 @@ class AIOrchestrator:
         if not opinions:
             return self._create_default_consensus()
 
+        # 상수에서 가중치 딕셔너리 가져오기
+        ai_weights = AIModelWeights.get_weights_dict()
+
         # 가중 확률 계산
         weighted_probs = {"home": 0.0, "draw": 0.0, "away": 0.0}
         total_weight = 0.0
 
         for opinion in opinions:
-            weight = AI_WEIGHTS.get(opinion.provider, 0.5)
+            weight = ai_weights.get(opinion.provider, 0.5)
             confidence_factor = opinion.confidence / 100  # 신뢰도 반영
 
             if opinion.probabilities:
@@ -248,7 +242,7 @@ class AIOrchestrator:
         weighted_confidence = 0.0
         weight_sum = 0.0
         for opinion in opinions:
-            weight = AI_WEIGHTS.get(opinion.provider, 0.5)
+            weight = ai_weights.get(opinion.provider, 0.5)
             weighted_confidence += opinion.confidence * weight
             weight_sum += weight
 
