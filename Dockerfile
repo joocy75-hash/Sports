@@ -70,6 +70,7 @@ COPY basketball_w5l_notifier.py .
 COPY collect_and_notify.py .
 
 # 설정 파일
+COPY config/ ./config/
 COPY alembic.ini ./
 COPY alembic/ ./alembic/
 
