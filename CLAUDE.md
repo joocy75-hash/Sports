@@ -264,7 +264,7 @@ elif prob_draw >= 0.20: upset_score += 5
 
 ---
 
-## 5. 핵심 파일 구조 (⭐ 2025-12-25 업데이트)
+## 5. 핵심 파일 구조 (⭐ 2026-01-10 업데이트 - v3.3.0)
 
 ```
 스포츠분석/
@@ -273,14 +273,16 @@ elif prob_draw >= 0.20: upset_score += 5
 │   ├── auto_sports_notifier.py      # ⭐ 통합 자동화 (축구+농구, AI분석, 텔레그램)
 │   ├── basketball_w5l_notifier.py   # 농구 승5패 전용 (레거시)
 │   ├── basketball_w5l_analyzer.py   # 농구 승5패 확률 계산 엔진
-│   └── collect_and_notify.py        # 통합 데이터 수집 (레거시, DB 사용)
+│   ├── collect_and_notify.py        # 통합 데이터 수집 (레거시, DB 사용)
+│   └── test_zentoto_crawler.py      # ⭐ [v3.3.0] 젠토토 크롤러 테스트
 │
 ├── 📂 src/services/                  # ⭐ 핵심 서비스 모듈
-│   ├── round_manager.py             # ⭐ 회차 관리 + 데이터 소스 통합 (핵심!)
-│   ├── betman_crawler.py            # ⭐ [NEW] 베트맨 웹 크롤러 (Playwright)
-│   ├── data_validator.py            # ⭐ [NEW] 데이터 검증 시스템
+│   ├── round_manager.py             # ⭐ 회차 관리 + 3단계 데이터 소스 (핵심!)
+│   ├── zentoto_crawler.py           # ⭐ [v3.3.0] 젠토토 크롤러 (1순위!)
+│   ├── betman_crawler.py            # 베트맨 웹 크롤러 (2순위)
+│   ├── data_validator.py            # 데이터 검증 시스템
 │   ├── telegram_notifier.py         # 텔레그램 메시지 전송
-│   ├── kspo_api_client.py           # KSPO API 클라이언트 (fallback용)
+│   ├── kspo_api_client.py           # KSPO API 클라이언트 (3순위 fallback)
 │   ├── ai_orchestrator.py           # 5개 AI 앙상블 관리
 │   └── 📂 ai/                        # 각 AI 분석기
 │       ├── gpt_analyzer.py
@@ -290,12 +292,16 @@ elif prob_draw >= 0.20: upset_score += 5
 │       └── kimi_analyzer.py
 │
 ├── 📂 .state/                        # 상태 저장 디렉토리
-│   ├── betman_soccer_wdl.json       # ⭐ [NEW] 베트맨 크롤러 캐시 (축구)
-│   ├── betman_basketball_w5l.json   # ⭐ [NEW] 베트맨 크롤러 캐시 (농구)
+│   ├── zentoto_soccer_wdl.json      # ⭐ [v3.3.0] 젠토토 캐시 (축구)
+│   ├── zentoto_basketball_w5l.json  # ⭐ [v3.3.0] 젠토토 캐시 (농구)
+│   ├── soccer_wdl_next_round.json   # ⭐ [v3.3.0] 다음 회차 미리 확보 캐시
+│   ├── basketball_w5l_next_round.json # ⭐ [v3.3.0] 다음 회차 미리 확보 캐시
+│   ├── betman_soccer_wdl.json       # 베트맨 크롤러 캐시 (축구)
+│   ├── betman_basketball_w5l.json   # 베트맨 크롤러 캐시 (농구)
 │   ├── soccer_wdl_round.json        # API 캐시 (축구) - fallback용
 │   ├── basketball_w5l_round.json    # API 캐시 (농구) - fallback용
 │   ├── last_notified_rounds.json    # 마지막 알림 회차
-│   └── 📂 validation_reports/        # ⭐ [NEW] 검증 보고서
+│   └── 📂 validation_reports/        # 검증 보고서
 │
 ├── 📂 docs/                          # ⭐ [NEW] 문서
 │   └── DATA_VALIDATION.md           # 데이터 검증 가이드
@@ -311,48 +317,56 @@ elif prob_draw >= 0.20: upset_score += 5
 
 ---
 
-## 6. 데이터 수집 아키텍처 (⚠️ 매우 중요! - 2025-12-25 대폭 개선)
+## 6. 데이터 수집 아키텍처 (⚠️ 매우 중요! - 2026-01-10 v3.3.0 업데이트)
 
-### 6.1 이중화 데이터 수집 시스템
+### 6.1 3단계 데이터 수집 시스템 (v3.3.0 변경!)
 
 ```
-⚠️ 핵심 변경: KSPO API의 한계로 인해 베트맨 크롤러를 1순위로 사용
+⚠️ v3.3.0 핵심 변경: 젠토토 크롤러가 1순위로 추가됨!
+젠토토는 발매 전에 다음 회차를 미리 등록하므로, 가장 먼저 시도합니다.
 ```
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    RoundManager                              │
-│                 (데이터 소스 통합 관리)                        │
+│              (3단계 데이터 소스 통합 관리)                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│   1순위: 베트맨 크롤러 (BetmanCrawler)                        │
+│   1순위: 젠토토 크롤러 (ZentotoCrawler) ⭐ NEW v3.3.0        │
 │   ├── ✅ 정확한 14경기 수집 보장                              │
-│   ├── ✅ 정확한 회차 번호                                     │
-│   ├── ✅ 베트맨 웹사이트와 100% 일치                          │
+│   ├── ✅ 다음 회차 미리 확보 가능! (핵심 장점)                 │
+│   ├── ✅ 발매 마감 후에도 데이터 유지                          │
 │   └── ⚠️ Playwright 필요 (브라우저 자동화)                   │
 │                                                              │
-│   2순위: KSPO API (Fallback)                                 │
+│   2순위: 베트맨 크롤러 (BetmanCrawler)                        │
+│   ├── ✅ 정확한 14경기 수집 보장                              │
+│   ├── ✅ 공식 발매 사이트 (정확도 최고)                        │
+│   ├── ⚠️ 한국 IP에서만 접근 가능 (Geo-blocking)              │
+│   └── ⚠️ 발매 마감 후 데이터 사라짐                          │
+│                                                              │
+│   3순위: KSPO API (Fallback)                                 │
 │   ├── ⚠️ 경기 누락 가능 (12~14경기)                          │
 │   ├── ⚠️ row_num 불일치 문제                                 │
 │   ├── ⚠️ turn_no가 NULL인 경우 많음                          │
 │   └── ✅ 빠른 응답 속도                                       │
 │                                                              │
-│   3순위: 캐시 데이터                                          │
-│   └── 크롤러/API 모두 실패 시 최근 캐시 사용                   │
+│   4순위: 캐시 데이터 (최후 수단)                               │
+│   └── 모든 소스 실패 시 최근 캐시 사용                         │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 데이터 소스별 비교
+### 6.2 데이터 소스별 비교 (v3.3.0 업데이트)
 
-| 항목 | KSPO API (기존) | 베트맨 크롤러 (신규) |
-|------|----------------|---------------------|
-| **경기 수** | 12~14경기 (불안정) | **14경기 (100%)** |
-| **회차 번호** | 추정값 (종종 NULL) | **정확값** |
-| **경기 순서** | row_num 불일치 | **베트맨과 동일** |
-| **12/28 경기** | 누락됨 | **정상 수집** |
-| **속도** | 빠름 (1~2초) | 느림 (5~10초) |
-| **의존성** | HTTP 요청만 | Playwright 필요 |
+| 항목 | 젠토토 크롤러 ⭐ | 베트맨 크롤러 | KSPO API |
+|------|-----------------|--------------|----------|
+| **경기 수** | 14경기 (100%) | 14경기 (100%) | 12~14경기 (불안정) |
+| **회차 번호** | 정확 | 정확 | 종종 NULL |
+| **다음 회차** | ✅ 미리 확보 가능 | ❌ 불가 | ❌ 불가 |
+| **발매 마감 후** | ✅ 데이터 유지 | ❌ 사라짐 | ✅ 유지 |
+| **Geo-blocking** | 확인 필요 | 한국 IP만 | 없음 |
+| **속도** | ~8초 | ~8초 | ~2초 |
+| **의존성** | Playwright | Playwright | HTTP 요청만 |
 
 ### 6.3 RoundManager 사용법
 
@@ -976,6 +990,12 @@ gh secret list
 
 | 날짜 | 버전 | 변경 내용 |
 |------|------|----------|
+| **2026-01-10** | **3.3.0** | **🎯 젠토토 크롤러 신규 도입 (3단계 데이터 소스 체계)** |
+|  |  | - ⭐ **젠토토 크롤러 신규 구현** (`zentoto_crawler.py`) |
+|  |  | - ⭐ **RoundManager 3단계 우선순위**: 젠토토 → 베트맨 → KSPO API |
+|  |  | - ⭐ **다음 회차 미리 확보 기능** (발매 전에 경기 수집 가능) |
+|  |  | - `test_zentoto_crawler.py` 통합 테스트 스크립트 추가 |
+|  |  | - 데이터 소스별 비교 테스트 기능 추가 |
 | **2026-01-05** | **3.2.1** | **🌏 프로덕션 서버 마이그레이션 (독일 → 한국)** |
 |  |  | - ✅ **한국 서버 (141.164.55.245) 배포 완료** |
 |  |  | - ❌ **독일 서버 (5.161.112.248) 폐기** |
@@ -1023,7 +1043,7 @@ KSPO API: 12경기 (10~14번 누락, row_num 불일치)
 2. RoundManager에 크롤러 통합
 3. 크롤러 실패 시 API fallback
 
-### 14.2 데이터 흐름도
+### 14.2 데이터 흐름도 (⚠️ v3.3.0 업데이트!)
 
 ```
 사용자 요청
@@ -1033,11 +1053,11 @@ KSPO API: 12경기 (10~14번 누락, row_num 불일치)
 │ RoundManager │
 └─────────────┘
      │
-     ├─── source="auto" (기본값)
+     ├─── source="auto" (기본값) ◄── ⭐ 권장!
      │         │
      │         ▼
      │    ┌──────────────┐
-     │    │ 베트맨 크롤러 │ ◄── 1순위 (정확)
+     │    │ 젠토토 크롤러 │ ◄── 1순위 (다음 회차 미리 확보 가능!) ⭐ NEW
      │    └──────────────┘
      │         │
      │         ├── 성공 → 14경기 반환
@@ -1045,13 +1065,24 @@ KSPO API: 12경기 (10~14번 누락, row_num 불일치)
      │         └── 실패
      │              │
      │              ▼
-     │         ┌──────────┐
-     │         │ KSPO API │ ◄── 2순위 (fallback)
-     │         └──────────┘
+     │         ┌──────────────┐
+     │         │ 베트맨 크롤러 │ ◄── 2순위 (공식 발매 사이트)
+     │         └──────────────┘
      │              │
-     │              └── 12~14경기 반환
+     │              ├── 성공 → 14경기 반환
+     │              │
+     │              └── 실패
+     │                   │
+     │                   ▼
+     │              ┌──────────┐
+     │              │ KSPO API │ ◄── 3순위 (최후 수단)
+     │              └──────────┘
+     │                   │
+     │                   └── 12~14경기 반환 (경기 누락 가능)
      │
-     ├─── source="crawler" (크롤러만)
+     ├─── source="zentoto" (젠토토만) ◄── NEW
+     │
+     ├─── source="crawler" (베트맨만)
      │
      └─── source="api" (API만)
 ```
@@ -1142,11 +1173,333 @@ await telegram_notifier.notify_hit_rate_report(report)
 
 ---
 
-**버전**: 3.1.0
-**최종 업데이트**: 2025-12-25
+## 16. 젠토토 크롤러 신규 도입 (v3.3.0) ⭐ NEW
+
+### 16.1 왜 젠토토 크롤러가 필요한가?
+
+**기존 문제점:**
+```
+베트맨 크롤러 한계:
+1. 발매 마감 후 → 경기 정보 사라짐
+2. 발매 전 → 다음 회차 정보 없음
+3. 한국 IP에서만 접근 가능 (Geo-blocking)
+4. UI 변경 시 파싱 실패 위험
+```
+
+**젠토토의 장점:**
+```
+✅ 발매 전에 다음 회차 경기가 미리 등록됨
+✅ 발매 마감 후에도 데이터 유지
+✅ 베트맨 UI 변경에 대한 백업
+✅ 테이블 구조가 더 안정적
+```
+
+### 16.2 3단계 데이터 소스 우선순위 체계
+
+**v3.3.0부터 변경된 우선순위:**
+
+| 순위 | 데이터 소스 | 특징 | 사용 시점 |
+|------|------------|------|----------|
+| **1순위** | **젠토토 크롤러** ⭐ | 다음 회차 미리 확보 | 평상시 사용 (권장) |
+| **2순위** | 베트맨 크롤러 | 공식 발매 사이트 | 젠토토 실패 시 |
+| **3순위** | KSPO API | 경기 아카이브 | 모든 크롤러 실패 시 |
+
+### 16.3 젠토토 크롤러 구현 세부사항
+
+**파일 위치**: `src/services/zentoto_crawler.py`
+
+```python
+class ZentotoCrawler:
+    """젠토토 웹사이트 크롤러
+
+    젠토토는 프로토 경기 정보를 미리 등록하므로,
+    베트맨 발매 전에 다음 회차 경기를 확보할 수 있음
+    """
+
+    # 젠토토 URL
+    BASE_URL = "https://www.zentoto.com"
+    SOCCER_URL = "https://www.zentoto.com/toto/soccer"
+    BASKETBALL_URL = "https://www.zentoto.com/toto/basketball"
+
+    async def get_soccer_wdl_games(self, year=None, round_number=None, force_refresh=False):
+        """축구 승무패 14경기 조회"""
+
+    async def get_basketball_w5l_games(self, year=None, round_number=None, force_refresh=False):
+        """농구 승5패 14경기 조회"""
+
+    async def get_next_round_games(self, game_type="soccer_wdl"):
+        """⭐ 다음 회차 경기 미리 확보 (발매 전)"""
+```
+
+**핵심 데이터 클래스:**
+
+```python
+@dataclass
+class RoundInfo:
+    """회차 정보"""
+    round_number: int      # 회차 번호 (예: 152)
+    year: int              # 연도 (예: 2026)
+    game_type: str         # "soccer_wdl" | "basketball_w5l"
+    deadline: datetime     # 마감 시간
+    sale_start: datetime   # 발매 시작
+    sale_end: datetime     # 발매 마감
+    match_date: str        # YYYYMMDD
+    game_count: int        # 경기 수 (14경기)
+    status: str            # "발매중" | "발매예정" | "마감" | "결과발표"
+    source: str            # "zentoto"
+    updated_at: datetime
+
+@dataclass
+class GameInfo:
+    """경기 정보"""
+    game_number: int       # 경기 번호 (1~14)
+    home_team: str         # 홈팀명 (한글)
+    away_team: str         # 원정팀명 (한글)
+    match_date: str        # YYYYMMDD
+    match_time: str        # HHMM
+    league_name: str       # 리그명
+    home_odds: float       # 홈팀 배당률
+    draw_odds: float       # 무승부 배당률 (축구)
+    away_odds: float       # 원정팀 배당률
+    five_odds: float       # 5점차 이내 배당률 (농구)
+```
+
+### 16.4 젠토토 페이지 파싱 로직
+
+**젠토토 테이블 구조:**
+```
+[21] 1                          ← 경기 번호
+[22] 9  6  3  33  6  코모1907   ← 통계 + 홈팀명 (탭 구분)
+[23] 경기분석
+[24] VS
+[25] 볼로냐  8  26  7  5  6     ← 원정팀명 + 통계 (탭 구분)
+```
+
+**파싱 알고리즘:**
+```python
+# 1. 경기 번호 찾기 (1~14 단독 숫자)
+if /^\d{1,2}$/.test(line):
+    game_num = parseInt(line)
+    if 1 <= game_num <= 14:
+
+        # 2. 다음 라인: "통계\t통계\t홈팀" 형식
+        home_parts = next_line.split('\t')
+        home_team = home_parts[-1]  # 마지막이 팀명
+
+        # 3. VS 라인 이후: "원정팀\t통계\t통계" 형식
+        away_parts = vs_next_line.split('\t')
+        away_team = away_parts[0]  # 첫번째가 팀명
+
+        # 4. 경기 추가
+        games.append({game_num, home_team, away_team})
+```
+
+### 16.5 RoundManager 업데이트 (v3.3.0)
+
+**변경된 메서드 시그니처:**
+
+```python
+class RoundManager:
+    """회차 및 경기 관리자 (젠토토 우선, 베트맨 백업, API fallback)"""
+
+    async def get_soccer_wdl_round(
+        self,
+        force_refresh: bool = False,
+        source: str = "auto"  # ⭐ NEW: "zentoto" 옵션 추가
+    ) -> Tuple[RoundInfo, List[Dict]]:
+        """
+        Args:
+            source: 데이터 소스
+                - "auto": 젠토토 → 베트맨 → API 순서 (기본값) ⭐ 변경됨
+                - "zentoto": 젠토토만 사용 ⭐ NEW
+                - "crawler": 베트맨만 사용
+                - "api": API만 사용
+        """
+```
+
+**새로운 메서드:**
+
+```python
+# 다음 회차 미리 확보
+async def prefetch_next_round(self, game_type: str = "soccer_wdl"):
+    """
+    다음 회차 경기 미리 확보 (발매 전)
+
+    젠토토는 발매 전에 다음 회차 경기를 미리 등록하므로,
+    이 메서드로 다음 회차를 미리 확보할 수 있음
+    """
+
+# 미리 확보된 다음 회차 조회 (캐시에서)
+def get_prefetched_next_round(self, game_type: str):
+    """미리 확보해둔 다음 회차 조회"""
+
+# 현재 회차 + 다음 회차 통합 확인
+async def check_and_prefetch(self, game_type: str = "soccer_wdl"):
+    """
+    현재 회차 확인 + 다음 회차 미리 확보 (통합)
+
+    Returns:
+        {
+            "current": (RoundInfo, games) or None,
+            "next": (RoundInfo, games) or None,
+        }
+    """
+```
+
+### 16.6 사용 예시
+
+**기본 사용 (auto 모드 - 권장):**
+```python
+from src.services.round_manager import RoundManager
+
+manager = RoundManager()
+
+# 자동 모드: 젠토토 → 베트맨 → API 순서로 시도
+info, games = await manager.get_soccer_wdl_round()
+print(f"회차: {info.round_number}회차, {len(games)}경기")
+```
+
+**다음 회차 미리 확보:**
+```python
+# 다음 회차 미리 확보 (발매 전!)
+result = await manager.prefetch_next_round("soccer_wdl")
+if result:
+    info, games = result
+    print(f"✅ 다음 회차 확보: {info.round_number}회차")
+else:
+    print("❌ 다음 회차 아직 미등록")
+```
+
+**현재 + 다음 회차 통합 확인:**
+```python
+result = await manager.check_and_prefetch("soccer_wdl")
+
+if result["current"]:
+    info, _ = result["current"]
+    print(f"현재 회차: {info.round_number}회차")
+
+if result["next"]:
+    info, games = result["next"]
+    print(f"다음 회차: {info.round_number}회차 ({len(games)}경기)")
+```
+
+**특정 소스만 사용:**
+```python
+# 젠토토만 사용
+info, games = await manager.get_soccer_wdl_round(source="zentoto")
+
+# 베트맨만 사용
+info, games = await manager.get_soccer_wdl_round(source="crawler")
+
+# API만 사용 (비권장)
+info, games = await manager.get_soccer_wdl_round(source="api")
+```
+
+### 16.7 상태 파일 구조
+
+**새로 추가된 상태 파일:**
+```
+.state/
+├── zentoto_soccer_wdl.json       # 젠토토 축구 승무패 캐시 ⭐ NEW
+├── zentoto_basketball_w5l.json   # 젠토토 농구 승5패 캐시 ⭐ NEW
+├── soccer_wdl_next_round.json    # 다음 회차 캐시 ⭐ NEW
+├── basketball_w5l_next_round.json # 다음 회차 캐시 ⭐ NEW
+├── betman_soccer_wdl.json        # 베트맨 축구 승무패 캐시
+├── betman_basketball_w5l.json    # 베트맨 농구 승5패 캐시
+├── soccer_wdl_round.json         # API 축구 승무패 캐시
+└── basketball_w5l_round.json     # API 농구 승5패 캐시
+```
+
+### 16.8 테스트 스크립트
+
+**파일 위치**: `test_zentoto_crawler.py`
+
+```bash
+# 젠토토 크롤러만 테스트
+python3 test_zentoto_crawler.py --zentoto
+
+# RoundManager 통합 테스트 (젠토토 → 베트맨 → API)
+python3 test_zentoto_crawler.py --integration
+
+# 데이터 소스 비교 테스트
+python3 test_zentoto_crawler.py --compare
+
+# 모든 테스트 실행
+python3 test_zentoto_crawler.py --all
+```
+
+**테스트 결과 예시:**
+```
+======================================================================
+🎯 젠토토 크롤러 테스트
+======================================================================
+
+[1] 축구 승무패 크롤링
+--------------------------------------------------
+  ✅ 회차: 2026년 3회차
+  ✅ 상태: 발매중
+  ✅ 경기 수: 14경기
+  ✅ 14경기 수집 성공!
+
+  경기 목록:
+    01. 코모1907 vs 볼로냐
+    02. 엠폴리 vs 레체
+    03. 우디네세 vs 아탈란타
+    04. 카옌 vs 셰필드U
+    05. 노리치시티 vs 찰턴아슬레틱
+    ... (총 14경기)
+
+[2] 농구 승5패 크롤링
+--------------------------------------------------
+  ✅ 회차: 2026년 5회차
+  ✅ 상태: 발매중
+  ✅ 경기 수: 14경기
+  ✅ 14경기 수집 성공!
+
+[3] 다음 회차 미리 확보 (축구)
+--------------------------------------------------
+  ✅ 다음 회차 발견: 2026년 4회차
+  ✅ 경기 수: 14경기
+
+======================================================================
+✅ 테스트 완료!
+======================================================================
+```
+
+### 16.9 젠토토 vs 베트맨 vs API 비교
+
+| 항목 | 젠토토 크롤러 ⭐ | 베트맨 크롤러 | KSPO API |
+|------|-----------------|--------------|----------|
+| **경기 수** | 14경기 (100%) | 14경기 (100%) | 12~14경기 (불안정) |
+| **회차 번호** | 정확 | 정확 | 종종 NULL |
+| **다음 회차** | ✅ 미리 확보 가능 | ❌ 불가 | ❌ 불가 |
+| **발매 마감 후** | ✅ 데이터 유지 | ❌ 사라짐 | ✅ 유지 |
+| **Geo-blocking** | 확인 필요 | 한국 IP만 | 없음 |
+| **안정성** | 높음 | 보통 (UI 변경 위험) | 높음 |
+| **속도** | ~8초 | ~8초 | ~2초 |
+
+### 16.10 AI 작업자 체크리스트 (v3.3.0)
+
+코드 수정 시 반드시 확인:
+- [ ] `source="auto"`가 기본값인가? (젠토토 우선)
+- [ ] 젠토토 → 베트맨 → API 순서가 유지되는가?
+- [ ] `prefetch_next_round()` 로직이 정상인가?
+- [ ] 젠토토 캐시(`_zentoto_cache`)와 베트맨 캐시(`_crawler_cache`) 구분되어 있는가?
+- [ ] 상태 파일 경로가 올바른가? (`.state/zentoto_*.json`)
+
+**절대 금지:**
+- ❌ 젠토토 우선순위를 베트맨보다 낮추지 말 것
+- ❌ `get_next_round_games()` 로직 제거하지 말 것
+- ❌ 젠토토 캐시와 베트맨 캐시를 혼합하지 말 것
+
+---
+
+**버전**: 3.3.0
+**최종 업데이트**: 2026-01-10
 **작성**: AI Assistant
 
 > 이 문서를 통해 새로운 작업자도 프로젝트 방향성을 이해하고 일관된 개발을 할 수 있습니다.
-> 데이터 수집 문제 발생 시 **섹션 6**을 참고하세요.
+> 젠토토 크롤러 관련 문제는 **섹션 16**을 참고하세요.
+> 데이터 수집 문제 발생 시 **섹션 6 또는 14.2**를 참고하세요.
 > 적중률 추적 시스템은 **섹션 15**를 참고하세요.
 > Playwright 설치가 필요합니다: `pip install playwright && playwright install chromium`

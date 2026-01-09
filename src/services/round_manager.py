@@ -3,13 +3,20 @@
 회차 관리 모듈 - 축구 승무패 / 농구 승5패 정확한 회차 및 경기 관리
 
 핵심 기능:
-1. 베트맨 크롤러 우선 사용 (정확한 14경기)
-2. KSPO API fallback (크롤러 실패 시)
-3. 회차별 경기 데이터 캐싱 및 검증
+1. 젠토토 크롤러 우선 사용 (다음 회차 미리 확보 가능!)
+2. 베트맨 크롤러 (젠토토 실패 시)
+3. KSPO API fallback (모든 크롤러 실패 시)
+4. 회차별 경기 데이터 캐싱 및 검증
 
 데이터 소스 우선순위:
-- 1순위: 베트맨 크롤러 (가장 정확)
-- 2순위: KSPO API (크롤러 실패 시)
+- 1순위: 젠토토 크롤러 (다음 회차 미리 확보 가능) ⭐ NEW
+- 2순위: 베트맨 크롤러 (공식 발매 사이트)
+- 3순위: KSPO API (최후 수단)
+
+젠토토의 장점:
+- 발매 전에 다음 회차 경기가 미리 등록됨
+- 베트맨 발매 마감 후에도 데이터 유지
+- 베트맨 UI 변경에 대한 백업
 """
 
 import asyncio
@@ -67,23 +74,42 @@ class RoundInfo:
 
 
 class RoundManager:
-    """회차 및 경기 관리자 (베트맨 크롤러 우선)"""
+    """회차 및 경기 관리자 (젠토토 우선, 베트맨 백업, API fallback)"""
 
     def __init__(self):
         settings = get_settings()
         self.api_key = settings.kspo_todz_api_key
         self.base_url = settings.kspo_todz_api_base_url
 
-        # 베트맨 크롤러 (Lazy initialization)
+        # 크롤러 (Lazy initialization)
+        self._zentoto_crawler = None
         self._betman_crawler = None
 
         # 상태 파일
         self.soccer_state_file = STATE_DIR / "soccer_wdl_round.json"
         self.basketball_state_file = STATE_DIR / "basketball_w5l_round.json"
 
-        # 캐시 (별도 관리: 크롤러 캐시 + API 캐시)
+        # 다음 회차 캐시 파일
+        self.soccer_next_round_file = STATE_DIR / "soccer_wdl_next_round.json"
+        self.basketball_next_round_file = STATE_DIR / "basketball_w5l_next_round.json"
+
+        # 캐시 (별도 관리: 젠토토 캐시 + 베트맨 캐시 + API 캐시)
         self._cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
+        self._zentoto_cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
         self._crawler_cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
+
+    async def _get_zentoto_crawler(self):
+        """젠토토 크롤러 Lazy initialization"""
+        if self._zentoto_crawler is None:
+            try:
+                from src.services.zentoto_crawler import ZentotoCrawler
+                self._zentoto_crawler = ZentotoCrawler(headless=True)
+                await self._zentoto_crawler._init_browser()
+                logger.info("젠토토 크롤러 초기화 완료")
+            except Exception as e:
+                logger.warning(f"젠토토 크롤러 초기화 실패: {e}")
+                self._zentoto_crawler = None
+        return self._zentoto_crawler
 
     async def _get_betman_crawler(self):
         """베트맨 크롤러 Lazy initialization"""
@@ -110,9 +136,10 @@ class RoundManager:
 
         Args:
             force_refresh: 캐시 무시하고 새로 조회
-            source: 데이터 소스 ("auto" | "crawler" | "api")
-                - "auto": 크롤러 우선, 실패 시 API fallback (기본값)
-                - "crawler": 크롤러만 사용
+            source: 데이터 소스 ("auto" | "zentoto" | "crawler" | "api")
+                - "auto": 젠토토 → 베트맨 → API 순서 (기본값)
+                - "zentoto": 젠토토만 사용
+                - "crawler": 베트맨만 사용
                 - "api": API만 사용
 
         Returns:
@@ -122,11 +149,18 @@ class RoundManager:
 
         # 캐시 확인 (5분 이내)
         if not force_refresh:
-            # 크롤러 캐시 우선 확인
+            # 젠토토 캐시 우선 확인
+            if source in ["auto", "zentoto"] and cache_key in self._zentoto_cache:
+                info, games = self._zentoto_cache[cache_key]
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
+                    logger.info(f"젠토토 캐시에서 축구 승무패 {info.round_number}회차 로드")
+                    return info, games
+
+            # 베트맨 캐시 확인
             if source in ["auto", "crawler"] and cache_key in self._crawler_cache:
                 info, games = self._crawler_cache[cache_key]
                 if (datetime.now() - info.updated_at).total_seconds() < 300:
-                    logger.info(f"크롤러 캐시에서 축구 승무패 {info.round_number}회차 로드")
+                    logger.info(f"베트맨 캐시에서 축구 승무패 {info.round_number}회차 로드")
                     return info, games
 
             # API 캐시 확인
@@ -136,28 +170,40 @@ class RoundManager:
                     logger.info(f"API 캐시에서 축구 승무패 {info.round_number}회차 로드")
                     return info, games
 
-        # 1순위: 베트맨 크롤러
+        # 1순위: 젠토토 크롤러 (다음 회차 미리 확보 가능!)
+        if source in ["auto", "zentoto"]:
+            try:
+                info, games = await self._fetch_from_zentoto("soccer")
+                if games and len(games) == 14:
+                    logger.info(f"✅ 젠토토: 축구 승무패 {info.round_number}회차 14경기 수집")
+                    self._zentoto_cache[cache_key] = (info, games)
+                    self._save_state(self.soccer_state_file, info, games)
+                    return info, games
+                else:
+                    logger.warning(f"젠토토에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
+            except Exception as e:
+                logger.warning(f"젠토토 실패, 베트맨 fallback 시도: {e}")
+
+        # 2순위: 베트맨 크롤러
         if source in ["auto", "crawler"]:
             try:
                 info, games = await self._fetch_from_crawler("soccer")
                 if games and len(games) == 14:
-                    logger.info(f"✅ 크롤러: 축구 승무패 {info.round_number}회차 14경기 수집")
-                    # 크롤러 캐시 및 저장
+                    logger.info(f"✅ 베트맨: 축구 승무패 {info.round_number}회차 14경기 수집")
                     self._crawler_cache[cache_key] = (info, games)
                     self._save_state(self.soccer_state_file, info, games)
                     return info, games
                 else:
-                    logger.warning(f"크롤러에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
+                    logger.warning(f"베트맨에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
             except Exception as e:
-                logger.warning(f"크롤러 실패, API fallback 시도: {e}")
+                logger.warning(f"베트맨 실패, API fallback 시도: {e}")
 
-        # 2순위: KSPO API
+        # 3순위: KSPO API
         if source in ["auto", "api"]:
             try:
                 info, games = await self._fetch_from_api("soccer")
                 if games:
                     logger.info(f"✅ API: 축구 승무패 {info.round_number}회차 {len(games)}경기 수집")
-                    # API 캐시 및 저장
                     self._cache[cache_key] = (info, games)
                     self._save_state(self.soccer_state_file, info, games)
                     return info, games
@@ -167,10 +213,10 @@ class RoundManager:
         # 저장된 상태에서 로드 (최후 수단)
         saved = self._load_state(self.soccer_state_file)
         if saved:
-            logger.warning("저장된 데이터 사용 (크롤러/API 모두 실패)")
+            logger.warning("저장된 데이터 사용 (모든 소스 실패)")
             return saved
 
-        raise ValueError("축구 승무패 경기 데이터를 찾을 수 없습니다 (크롤러/API 모두 실패)")
+        raise ValueError("축구 승무패 경기 데이터를 찾을 수 없습니다 (젠토토/베트맨/API 모두 실패)")
 
     # ========== 농구 승5패 ==========
 
@@ -184,9 +230,10 @@ class RoundManager:
 
         Args:
             force_refresh: 캐시 무시하고 새로 조회
-            source: 데이터 소스 ("auto" | "crawler" | "api")
-                - "auto": 크롤러 우선, 실패 시 API fallback (기본값)
-                - "crawler": 크롤러만 사용
+            source: 데이터 소스 ("auto" | "zentoto" | "crawler" | "api")
+                - "auto": 젠토토 → 베트맨 → API 순서 (기본값)
+                - "zentoto": 젠토토만 사용
+                - "crawler": 베트맨만 사용
                 - "api": API만 사용
 
         Returns:
@@ -196,11 +243,18 @@ class RoundManager:
 
         # 캐시 확인 (5분 이내)
         if not force_refresh:
-            # 크롤러 캐시 우선 확인
+            # 젠토토 캐시 우선 확인
+            if source in ["auto", "zentoto"] and cache_key in self._zentoto_cache:
+                info, games = self._zentoto_cache[cache_key]
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
+                    logger.info(f"젠토토 캐시에서 농구 승5패 {info.round_number}회차 로드")
+                    return info, games
+
+            # 베트맨 캐시 확인
             if source in ["auto", "crawler"] and cache_key in self._crawler_cache:
                 info, games = self._crawler_cache[cache_key]
                 if (datetime.now() - info.updated_at).total_seconds() < 300:
-                    logger.info(f"크롤러 캐시에서 농구 승5패 {info.round_number}회차 로드")
+                    logger.info(f"베트맨 캐시에서 농구 승5패 {info.round_number}회차 로드")
                     return info, games
 
             # API 캐시 확인
@@ -210,28 +264,40 @@ class RoundManager:
                     logger.info(f"API 캐시에서 농구 승5패 {info.round_number}회차 로드")
                     return info, games
 
-        # 1순위: 베트맨 크롤러
+        # 1순위: 젠토토 크롤러 (다음 회차 미리 확보 가능!)
+        if source in ["auto", "zentoto"]:
+            try:
+                info, games = await self._fetch_from_zentoto("basketball")
+                if games and len(games) == 14:
+                    logger.info(f"✅ 젠토토: 농구 승5패 {info.round_number}회차 14경기 수집")
+                    self._zentoto_cache[cache_key] = (info, games)
+                    self._save_state(self.basketball_state_file, info, games)
+                    return info, games
+                else:
+                    logger.warning(f"젠토토에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
+            except Exception as e:
+                logger.warning(f"젠토토 실패, 베트맨 fallback 시도: {e}")
+
+        # 2순위: 베트맨 크롤러
         if source in ["auto", "crawler"]:
             try:
                 info, games = await self._fetch_from_crawler("basketball")
                 if games and len(games) == 14:
-                    logger.info(f"✅ 크롤러: 농구 승5패 {info.round_number}회차 14경기 수집")
-                    # 크롤러 캐시 및 저장
+                    logger.info(f"✅ 베트맨: 농구 승5패 {info.round_number}회차 14경기 수집")
                     self._crawler_cache[cache_key] = (info, games)
                     self._save_state(self.basketball_state_file, info, games)
                     return info, games
                 else:
-                    logger.warning(f"크롤러에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
+                    logger.warning(f"베트맨에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
             except Exception as e:
-                logger.warning(f"크롤러 실패, API fallback 시도: {e}")
+                logger.warning(f"베트맨 실패, API fallback 시도: {e}")
 
-        # 2순위: KSPO API
+        # 3순위: KSPO API
         if source in ["auto", "api"]:
             try:
                 info, games = await self._fetch_from_api("basketball")
                 if games:
                     logger.info(f"✅ API: 농구 승5패 {info.round_number}회차 {len(games)}경기 수집")
-                    # API 캐시 및 저장
                     self._cache[cache_key] = (info, games)
                     self._save_state(self.basketball_state_file, info, games)
                     return info, games
@@ -241,12 +307,84 @@ class RoundManager:
         # 저장된 상태에서 로드 (최후 수단)
         saved = self._load_state(self.basketball_state_file)
         if saved:
-            logger.warning("저장된 데이터 사용 (크롤러/API 모두 실패)")
+            logger.warning("저장된 데이터 사용 (모든 소스 실패)")
             return saved
 
-        raise ValueError("농구 승5패 경기 데이터를 찾을 수 없습니다 (크롤러/API 모두 실패)")
+        raise ValueError("농구 승5패 경기 데이터를 찾을 수 없습니다 (젠토토/베트맨/API 모두 실패)")
 
     # ========== 핵심 데이터 수집 로직 ==========
+
+    async def _fetch_from_zentoto(self, sport: str) -> Tuple[RoundInfo, List[Dict]]:
+        """
+        젠토토 크롤러에서 데이터 수집
+
+        Args:
+            sport: "soccer" | "basketball"
+
+        Returns:
+            (RoundInfo, List[Dict]): 회차 정보 및 경기 목록 (API 형식으로 변환됨)
+        """
+        crawler = await self._get_zentoto_crawler()
+        if not crawler:
+            raise ValueError("젠토토 크롤러를 초기화할 수 없습니다")
+
+        # 크롤러에서 데이터 수집
+        if sport == "soccer":
+            zentoto_info, zentoto_games = await crawler.get_soccer_wdl_games(force_refresh=True)
+        else:  # basketball
+            zentoto_info, zentoto_games = await crawler.get_basketball_w5l_games(force_refresh=True)
+
+        # 젠토토 데이터를 API 형식으로 변환
+        games = self._convert_zentoto_to_api_format(zentoto_info, zentoto_games, sport)
+
+        # RoundInfo 변환
+        round_info = RoundInfo(
+            round_number=zentoto_info.round_number,
+            game_type=zentoto_info.game_type,
+            deadline=zentoto_info.deadline,
+            match_date=zentoto_info.match_date,
+            game_count=len(games),
+            status="open" if zentoto_info.status == "발매중" else "closed",
+            updated_at=datetime.now(),
+        )
+
+        return round_info, games
+
+    def _convert_zentoto_to_api_format(
+        self,
+        zentoto_info,
+        zentoto_games,
+        sport: str
+    ) -> List[Dict]:
+        """
+        젠토토 데이터를 KSPO API 형식으로 변환
+
+        Args:
+            zentoto_info: 젠토토 RoundInfo
+            zentoto_games: 젠토토 GameInfo 목록
+            sport: "soccer" | "basketball"
+
+        Returns:
+            API 형식 경기 목록 (기존 코드 호환)
+        """
+        games = []
+
+        for game in zentoto_games:
+            api_game = {
+                "row_num": game.game_number,
+                "hteam_han_nm": game.home_team,
+                "ateam_han_nm": game.away_team,
+                "match_ymd": game.match_date,
+                "match_tm": game.match_time,
+                "match_sport_han_nm": "축구" if sport == "soccer" else "농구",
+                "obj_prod_nm": "토토/프로토",
+                "leag_han_nm": game.league_name or "",
+                "turn_no": zentoto_info.round_number,
+                "source": "zentoto",  # 데이터 출처 표시
+            }
+            games.append(api_game)
+
+        return games
 
     async def _fetch_from_crawler(self, sport: str) -> Tuple[RoundInfo, List[Dict]]:
         """
@@ -585,6 +723,117 @@ class RoundManager:
 
         saved = self._load_state(state_file)
         return saved[0].round_number if saved else None
+
+    # ========== 다음 회차 미리 확보 (젠토토 활용) ==========
+
+    async def prefetch_next_round(self, game_type: str = "soccer_wdl") -> Optional[Tuple[RoundInfo, List[Dict]]]:
+        """
+        다음 회차 경기 미리 확보 (발매 전)
+
+        젠토토는 발매 전에 다음 회차 경기를 미리 등록하므로,
+        이 메서드로 다음 회차를 미리 확보할 수 있음
+
+        Args:
+            game_type: "soccer_wdl" | "basketball_w5l"
+
+        Returns:
+            다음 회차 정보 및 경기 목록 (없으면 None)
+        """
+        crawler = await self._get_zentoto_crawler()
+        if not crawler:
+            logger.warning("젠토토 크롤러 초기화 실패, 다음 회차 확보 불가")
+            return None
+
+        try:
+            result = await crawler.get_next_round_games(game_type)
+            if result:
+                zentoto_info, zentoto_games = result
+
+                # API 형식으로 변환
+                sport = "soccer" if game_type == "soccer_wdl" else "basketball"
+                games = self._convert_zentoto_to_api_format(zentoto_info, zentoto_games, sport)
+
+                round_info = RoundInfo(
+                    round_number=zentoto_info.round_number,
+                    game_type=game_type,
+                    deadline=zentoto_info.deadline,
+                    match_date=zentoto_info.match_date,
+                    game_count=len(games),
+                    status="pending",  # 발매 전
+                    updated_at=datetime.now(),
+                )
+
+                # 다음 회차 캐시 저장
+                if game_type == "soccer_wdl":
+                    next_round_file = self.soccer_next_round_file
+                else:
+                    next_round_file = self.basketball_next_round_file
+
+                self._save_state(next_round_file, round_info, games)
+                logger.info(f"✅ 다음 회차 미리 확보: {game_type} {round_info.round_number}회차 {len(games)}경기")
+
+                return round_info, games
+            else:
+                logger.info(f"다음 회차가 아직 등록되지 않음: {game_type}")
+                return None
+
+        except Exception as e:
+            logger.error(f"다음 회차 확보 실패: {e}")
+            return None
+
+    def get_prefetched_next_round(self, game_type: str) -> Optional[Tuple[RoundInfo, List[Dict]]]:
+        """
+        미리 확보해둔 다음 회차 조회 (캐시에서)
+
+        Args:
+            game_type: "soccer_wdl" | "basketball_w5l"
+
+        Returns:
+            미리 확보된 다음 회차 정보 (없으면 None)
+        """
+        if game_type == "soccer_wdl":
+            next_round_file = self.soccer_next_round_file
+        else:
+            next_round_file = self.basketball_next_round_file
+
+        return self._load_state(next_round_file)
+
+    async def check_and_prefetch(self, game_type: str = "soccer_wdl") -> dict:
+        """
+        현재 회차 확인 + 다음 회차 미리 확보 (통합)
+
+        주기적으로 호출하여:
+        1. 현재 발매중인 회차 정보 확보
+        2. 다음 회차가 등록되어 있으면 미리 확보
+
+        Returns:
+            {
+                "current": (RoundInfo, games) or None,
+                "next": (RoundInfo, games) or None,
+            }
+        """
+        result = {"current": None, "next": None}
+
+        # 현재 회차
+        try:
+            if game_type == "soccer_wdl":
+                info, games = await self.get_soccer_wdl_round()
+            else:
+                info, games = await self.get_basketball_w5l_round()
+            result["current"] = (info, games)
+            logger.info(f"현재 회차: {game_type} {info.round_number}회차")
+        except Exception as e:
+            logger.error(f"현재 회차 조회 실패: {e}")
+
+        # 다음 회차 미리 확보
+        try:
+            next_result = await self.prefetch_next_round(game_type)
+            if next_result:
+                result["next"] = next_result
+        except Exception as e:
+            logger.error(f"다음 회차 확보 실패: {e}")
+
+        return result
 
 
 # ========== 테스트 ==========
