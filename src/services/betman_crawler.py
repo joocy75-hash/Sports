@@ -196,162 +196,78 @@ class BetmanCrawler:
             raise ValueError(f"축구 승무패 크롤링 실패: {e}")
 
     async def _parse_soccer_wdl_page(self, page: Page) -> Tuple[RoundInfo, List[GameInfo]]:
-        """축구 승무패 페이지 파싱"""
-
-        # 베트맨은 iframe을 사용함 - iframe으로 전환
-        iframe = None
-        try:
-            # iframe 찾기 (여러 가능한 이름 시도)
-            iframe_selectors = [
-                "iframe[name='ifrm']",
-                "iframe#ifrm",
-                "iframe",
-            ]
-
-            for selector in iframe_selectors:
-                frames = await page.query_selector_all(selector)
-                if frames:
-                    iframe_element = frames[0]
-                    iframe = await iframe_element.content_frame()
-                    if iframe:
-                        logger.info(f"iframe 찾음: {selector}")
-                        break
-
-            if not iframe:
-                logger.warning("iframe을 찾지 못함 - 메인 페이지 사용")
-                iframe = page
-
-        except Exception as e:
-            logger.warning(f"iframe 전환 실패: {e} - 메인 페이지 사용")
-            iframe = page
+        """축구 승무패 페이지 파싱 (2026-01-10 새 UI 구조 대응)"""
 
         # 1. 회차 번호 추출
-        round_number = await self._extract_round_number(iframe, "축구")
+        round_number = await self._extract_round_number(page, "축구")
 
-        # 2. 14경기 목록 추출
+        # 2. 14경기 목록 추출 (새 UI: 테이블 없음, innerText 기반 파싱)
         games = []
 
-        # JavaScript 평가로 데이터 추출 (베트맨 테이블 구조 정확히 파싱)
         try:
-            games_data = await iframe.evaluate("""
-                () => {
+            # 새 베트맨 UI 구조: "X경기 ... 홈팀(홈팀) vs (원정팀) 원정팀" 패턴
+            games_data = await page.evaluate("""
+                (() => {
                     const items = [];
-                    const debugInfo = {
-                        tables: 0,
-                        totalRows: 0,
-                        matchedRows: 0,
-                        sampleCells: [],
-                        bodyText: ''
-                    };
+                    const text = document.body.innerText;
 
-                    // 전체 body 텍스트 수집 (디버깅용)
-                    debugInfo.bodyText = document.body.textContent.substring(0, 500);
+                    // 방법 1: 새 UI 패턴 (2026년~)
+                    // "X경기 ... 홈팀(홈팀) vs (원정팀) 원정팀" 형식
+                    const newPattern = /(\\d+)경기[\\s\\S]*?([가-힣a-zA-Z0-9]+)\\(홈팀\\)\\s*vs\\s*\\(원정팀\\)\\s*([가-힣a-zA-Z0-9]+)/g;
 
-                    // 모든 테이블 탐색
-                    const tables = document.querySelectorAll('table');
-                    debugInfo.tables = tables.length;
+                    let match;
+                    while ((match = newPattern.exec(text)) !== null) {
+                        items.push({
+                            game_number: parseInt(match[1]),
+                            home_team: match[2],
+                            away_team: match[3],
+                            match_time: '0000'
+                        });
+                    }
 
-                    for (let table of tables) {
-                        const rows = table.querySelectorAll('tr');
+                    // 방법 2: 기존 테이블 기반 파싱 (fallback)
+                    if (items.length === 0) {
+                        const tables = document.querySelectorAll('table');
+                        for (let table of tables) {
+                            const rows = table.querySelectorAll('tr');
+                            for (let row of rows) {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length < 2) continue;
 
-                        for (let row of rows) {
-                            debugInfo.totalRows++;
-                            const cells = row.querySelectorAll('td');
-                            if (cells.length < 2) continue;
+                                for (let cell of cells) {
+                                    const cellText = cell.textContent.trim();
+                                    const vsMatch = cellText.match(/^(.+?)\\s*vs\\s*(.+)$/i);
 
-                            // 샘플 셀 텍스트 수집 (처음 3개 행만)
-                            if (debugInfo.sampleCells.length < 3) {
-                                const cellTexts = Array.from(cells).map(c => c.textContent.trim()).slice(0, 5);
-                                debugInfo.sampleCells.push(cellTexts);
-                            }
-
-                            // 방법 1: "X경기" 패턴 (기존 로직)
-                            const firstCell = cells[0].textContent.trim();
-                            if (firstCell.match(/^\\d+경기$/)) {
-                                // 세 번째 셀 (인덱스 2)에서 팀명 추출
-                                if (cells.length >= 3) {
-                                    const teamCell = cells[2];
-                                    const teamText = teamCell.textContent.trim();
-
-                                    // "홈팀vs원정팀" 패턴 (공백 관대하게)
-                                    const vsMatch = teamText.match(/^(.+?)\\s*vs\\s*(.+)$/i);
-
-                                    if (vsMatch) {
+                                    if (vsMatch && items.length < 14) {
                                         const homeTeam = vsMatch[1].trim();
                                         const awayTeam = vsMatch[2].trim();
 
-                                        // 경기 시간 추출 (두 번째 셀)
-                                        const timeCell = cells[1].textContent.trim();
-                                        const timeMatch = timeCell.match(/(\\d{2}):(\\d{2})/);
-                                        const matchTime = timeMatch ? timeMatch[1] + timeMatch[2] : '0000';
+                                        if (homeTeam.length > 1 && awayTeam.length > 1) {
+                                            const isDuplicate = items.some(item =>
+                                                item.home_team === homeTeam && item.away_team === awayTeam
+                                            );
 
-                                        items.push({
-                                            game_number: items.length + 1,
-                                            home_team: homeTeam,
-                                            away_team: awayTeam,
-                                            match_time: matchTime
-                                        });
-                                        debugInfo.matchedRows++;
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            // 방법 2: 전체 텍스트에서 "vs" 패턴 찾기 (fallback)
-                            for (let cell of cells) {
-                                const text = cell.textContent.trim();
-                                const vsMatch = text.match(/^(.+?)\\s*vs\\s*(.+)$/i);
-
-                                if (vsMatch && items.length < 14) {
-                                    const homeTeam = vsMatch[1].trim();
-                                    const awayTeam = vsMatch[2].trim();
-
-                                    // 팀명이 너무 짧거나 숫자만 있으면 스킵
-                                    if (homeTeam.length > 1 && awayTeam.length > 1 &&
-                                        !homeTeam.match(/^\\d+$/) && !awayTeam.match(/^\\d+$/)) {
-
-                                        // 중복 체크
-                                        const isDuplicate = items.some(item =>
-                                            item.home_team === homeTeam && item.away_team === awayTeam
-                                        );
-
-                                        if (!isDuplicate) {
-                                            items.push({
-                                                game_number: items.length + 1,
-                                                home_team: homeTeam,
-                                                away_team: awayTeam,
-                                                match_time: '0000'
-                                            });
-                                            debugInfo.matchedRows++;
-                                            break;
+                                            if (!isDuplicate) {
+                                                items.push({
+                                                    game_number: items.length + 1,
+                                                    home_team: homeTeam,
+                                                    away_team: awayTeam,
+                                                    match_time: '0000'
+                                                });
+                                            }
                                         }
                                     }
                                 }
                             }
+                            if (items.length >= 14) break;
                         }
-
-                        // 14경기 수집했으면 중단
-                        if (items.length >= 14) break;
                     }
 
-                    console.log('Debug Info:', debugInfo);
-                    return { items, debugInfo };
-                }
+                    return items;
+                })()
             """)
 
-            # JavaScript 결과에서 items와 debugInfo 분리
-            if games_data and isinstance(games_data, dict):
-                debug_info = games_data.get('debugInfo', {})
-                logger.info(f"JavaScript 디버그 (축구): 테이블={debug_info.get('tables', 0)}, "
-                           f"전체 행={debug_info.get('totalRows', 0)}, "
-                           f"매칭 행={debug_info.get('matchedRows', 0)}")
-                # 샘플 셀 데이터 출력
-                if debug_info.get('sampleCells'):
-                    for i, sample in enumerate(debug_info['sampleCells'][:3]):
-                        logger.info(f"샘플 행 {i+1}: {sample}")
-                games_data = games_data.get('items', [])
-
-            logger.info(f"JavaScript로 {len(games_data) if games_data else 0}경기 추출")
+            logger.info(f"JavaScript로 {len(games_data) if games_data else 0}경기 추출 (축구)")
 
             if games_data:
                 games = [
@@ -372,9 +288,6 @@ class BetmanCrawler:
         if not games:
             screenshot_path = STATE_DIR / f"betman_soccer_error_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             await page.screenshot(path=str(screenshot_path), full_page=True)
-            if iframe != page:
-                await iframe.screenshot(path=str(STATE_DIR / f"betman_soccer_iframe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"))
-
             logger.error(f"경기 데이터를 찾지 못함. 스크린샷: {screenshot_path}")
             raise ValueError("축구 승무패 경기를 파싱할 수 없습니다")
 
@@ -386,7 +299,7 @@ class BetmanCrawler:
         round_info = RoundInfo(
             round_number=round_number,
             game_type="soccer_wdl",
-            deadline=None,  # 추후 파싱
+            deadline=None,
             match_date=match_date,
             game_count=len(games),
             status="open",
@@ -475,159 +388,77 @@ class BetmanCrawler:
             raise ValueError(f"농구 승5패 크롤링 실패: {e}")
 
     async def _parse_basketball_w5l_page(self, page: Page) -> Tuple[RoundInfo, List[GameInfo]]:
-        """농구 승5패 페이지 파싱 (축구와 유사한 로직)"""
+        """농구 승5패 페이지 파싱 (2026-01-10 새 UI 구조 대응)"""
 
-        # 베트맨은 iframe을 사용함 - iframe으로 전환
-        iframe = None
-        try:
-            iframe_selectors = [
-                "iframe[name='ifrm']",
-                "iframe#ifrm",
-                "iframe",
-            ]
+        # 1. 회차 번호 추출
+        round_number = await self._extract_round_number(page, "농구")
 
-            for selector in iframe_selectors:
-                frames = await page.query_selector_all(selector)
-                if frames:
-                    iframe_element = frames[0]
-                    iframe = await iframe_element.content_frame()
-                    if iframe:
-                        logger.info(f"iframe 찾음: {selector}")
-                        break
-
-            if not iframe:
-                logger.warning("iframe을 찾지 못함 - 메인 페이지 사용")
-                iframe = page
-
-        except Exception as e:
-            logger.warning(f"iframe 전환 실패: {e} - 메인 페이지 사용")
-            iframe = page
-
-        round_number = await self._extract_round_number(iframe, "농구")
-
+        # 2. 14경기 목록 추출 (새 UI: 테이블 없음, innerText 기반 파싱)
         games = []
 
-        # JavaScript 평가로 데이터 추출 (베트맨 테이블 구조 정확히 파싱)
         try:
-            games_data = await iframe.evaluate("""
-                () => {
+            # 새 베트맨 UI 구조: "X경기 ... 홈팀(홈팀) vs (원정팀) 원정팀" 패턴
+            games_data = await page.evaluate("""
+                (() => {
                     const items = [];
-                    const debugInfo = {
-                        tables: 0,
-                        totalRows: 0,
-                        matchedRows: 0,
-                        sampleCells: [],
-                        bodyText: ''
-                    };
+                    const text = document.body.innerText;
 
-                    // 전체 body 텍스트 수집 (디버깅용)
-                    debugInfo.bodyText = document.body.textContent.substring(0, 500);
+                    // 방법 1: 새 UI 패턴 (2026년~)
+                    const newPattern = /(\\d+)경기[\\s\\S]*?([가-힣a-zA-Z0-9]+)\\(홈팀\\)\\s*vs\\s*\\(원정팀\\)\\s*([가-힣a-zA-Z0-9]+)/g;
 
-                    // 모든 테이블 탐색
-                    const tables = document.querySelectorAll('table');
-                    debugInfo.tables = tables.length;
+                    let match;
+                    while ((match = newPattern.exec(text)) !== null) {
+                        items.push({
+                            game_number: parseInt(match[1]),
+                            home_team: match[2],
+                            away_team: match[3],
+                            match_time: '0000'
+                        });
+                    }
 
-                    for (let table of tables) {
-                        const rows = table.querySelectorAll('tr');
+                    // 방법 2: 기존 테이블 기반 파싱 (fallback)
+                    if (items.length === 0) {
+                        const tables = document.querySelectorAll('table');
+                        for (let table of tables) {
+                            const rows = table.querySelectorAll('tr');
+                            for (let row of rows) {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length < 2) continue;
 
-                        for (let row of rows) {
-                            debugInfo.totalRows++;
-                            const cells = row.querySelectorAll('td');
-                            if (cells.length < 2) continue;
+                                for (let cell of cells) {
+                                    const cellText = cell.textContent.trim();
+                                    const vsMatch = cellText.match(/^(.+?)\\s*vs\\s*(.+)$/i);
 
-                            // 샘플 셀 텍스트 수집 (처음 3개 행만)
-                            if (debugInfo.sampleCells.length < 3) {
-                                const cellTexts = Array.from(cells).map(c => c.textContent.trim()).slice(0, 5);
-                                debugInfo.sampleCells.push(cellTexts);
-                            }
-
-                            // 방법 1: "X경기" 패턴 (기존 로직)
-                            const firstCell = cells[0].textContent.trim();
-                            if (firstCell.match(/^\\d+경기$/)) {
-                                // 세 번째 셀 (인덱스 2)에서 팀명 추출
-                                if (cells.length >= 3) {
-                                    const teamCell = cells[2];
-                                    const teamText = teamCell.textContent.trim();
-
-                                    // "홈팀vs원정팀" 패턴 (공백 관대하게)
-                                    const vsMatch = teamText.match(/^(.+?)\\s*vs\\s*(.+)$/i);
-
-                                    if (vsMatch) {
+                                    if (vsMatch && items.length < 14) {
                                         const homeTeam = vsMatch[1].trim();
                                         const awayTeam = vsMatch[2].trim();
 
-                                        // 경기 시간 추출 (두 번째 셀)
-                                        const timeCell = cells[1].textContent.trim();
-                                        const timeMatch = timeCell.match(/(\\d{2}):(\\d{2})/);
-                                        const matchTime = timeMatch ? timeMatch[1] + timeMatch[2] : '0000';
+                                        if (homeTeam.length > 1 && awayTeam.length > 1) {
+                                            const isDuplicate = items.some(item =>
+                                                item.home_team === homeTeam && item.away_team === awayTeam
+                                            );
 
-                                        items.push({
-                                            game_number: items.length + 1,
-                                            home_team: homeTeam,
-                                            away_team: awayTeam,
-                                            match_time: matchTime
-                                        });
-                                        debugInfo.matchedRows++;
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            // 방법 2: 전체 텍스트에서 "vs" 패턴 찾기 (fallback)
-                            for (let cell of cells) {
-                                const text = cell.textContent.trim();
-                                const vsMatch = text.match(/^(.+?)\\s*vs\\s*(.+)$/i);
-
-                                if (vsMatch && items.length < 14) {
-                                    const homeTeam = vsMatch[1].trim();
-                                    const awayTeam = vsMatch[2].trim();
-
-                                    // 팀명이 너무 짧거나 숫자만 있으면 스킵
-                                    if (homeTeam.length > 1 && awayTeam.length > 1 &&
-                                        !homeTeam.match(/^\\d+$/) && !awayTeam.match(/^\\d+$/)) {
-
-                                        // 중복 체크
-                                        const isDuplicate = items.some(item =>
-                                            item.home_team === homeTeam && item.away_team === awayTeam
-                                        );
-
-                                        if (!isDuplicate) {
-                                            items.push({
-                                                game_number: items.length + 1,
-                                                home_team: homeTeam,
-                                                away_team: awayTeam,
-                                                match_time: '0000'
-                                            });
-                                            debugInfo.matchedRows++;
-                                            break;
+                                            if (!isDuplicate) {
+                                                items.push({
+                                                    game_number: items.length + 1,
+                                                    home_team: homeTeam,
+                                                    away_team: awayTeam,
+                                                    match_time: '0000'
+                                                });
+                                            }
                                         }
                                     }
                                 }
                             }
+                            if (items.length >= 14) break;
                         }
-
-                        // 14경기 수집했으면 중단
-                        if (items.length >= 14) break;
                     }
 
-                    console.log('Debug Info:', debugInfo);
-                    return { items, debugInfo };
-                }
+                    return items;
+                })()
             """)
 
-            # JavaScript 결과에서 items와 debugInfo 분리
-            if games_data and isinstance(games_data, dict):
-                debug_info = games_data.get('debugInfo', {})
-                logger.info(f"JavaScript 디버그 (농구): 테이블={debug_info.get('tables', 0)}, "
-                           f"전체 행={debug_info.get('totalRows', 0)}, "
-                           f"매칭 행={debug_info.get('matchedRows', 0)}")
-                # 샘플 셀 데이터 출력
-                if debug_info.get('sampleCells'):
-                    for i, sample in enumerate(debug_info['sampleCells'][:3]):
-                        logger.info(f"샘플 행 {i+1}: {sample}")
-                games_data = games_data.get('items', [])
-
-            logger.info(f"JavaScript로 {len(games_data) if games_data else 0}경기 추출")
+            logger.info(f"JavaScript로 {len(games_data) if games_data else 0}경기 추출 (농구)")
 
             if games_data:
                 games = [
@@ -644,15 +475,14 @@ class BetmanCrawler:
         except Exception as e:
             logger.error(f"JavaScript 평가 실패: {e}")
 
+        # 경기가 없으면 스크린샷 저장 후 예외 발생
         if not games:
             screenshot_path = STATE_DIR / f"betman_basketball_error_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             await page.screenshot(path=str(screenshot_path), full_page=True)
-            if iframe != page:
-                await iframe.screenshot(path=str(STATE_DIR / f"betman_basketball_iframe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"))
-
             logger.error(f"경기 데이터를 찾지 못함. 스크린샷: {screenshot_path}")
             raise ValueError("농구 승5패 경기를 파싱할 수 없습니다")
 
+        # 3. 회차 정보 생성
         match_date = datetime.now().strftime("%Y%m%d")
         if games and games[0].match_date != datetime.now().strftime("%Y%m%d"):
             match_date = games[0].match_date

@@ -806,18 +806,18 @@ jobs:
 ### 원격 서버 확인
 
 ```bash
-# SSH 접속
-ssh root@5.161.112.248
+# SSH 접속 (⚠️ 한국 서버 사용!)
+ssh root@141.164.55.245
 
 # 로그 확인
 cd /opt/sports-analysis
-docker-compose logs -f --tail=100
+docker logs sports_analysis --tail=100 -f
 
 # 컨테이너 상태
 docker ps
 
 # 스케줄러 작동 확인
-docker-compose logs scheduler | tail -50
+docker logs sports_analysis --tail=50
 ```
 
 **⚠️ 주의사항:**
