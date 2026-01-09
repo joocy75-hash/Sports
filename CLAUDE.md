@@ -1611,4 +1611,68 @@ pip install aiohttp python-dotenv openai anthropic
 
 ---
 
+## 18. 다중 AI 작업자 가이드 ⭐ NEW
+
+### 18.1 스킬 파일 구조
+
+다중 AI 계정으로 작업 시 다음 스킬 파일들을 참조하세요:
+
+```
+.claude/skills/
+├── ai-worker-handoff-guide.md      # ⭐ 핸드오프 가이드 (필수!)
+├── realtime-data-integration.md    # v4.0.0 실시간 데이터 연동 스킬
+└── current-work-status.md          # 현재 작업 상태 (라이브)
+```
+
+### 18.2 작업 시작 전 체크리스트
+
+```bash
+# 1. 필수 문서 읽기 (순서대로!)
+cat CLAUDE.md                                    # 이 파일
+cat .claude/skills/ai-worker-handoff-guide.md    # 핸드오프 가이드
+cat .claude/skills/current-work-status.md        # 현재 상태
+
+# 2. Git 상태 확인
+git status && git log --oneline -5
+
+# 3. 서버 상태 확인
+ssh root@141.164.55.245 "docker ps"
+```
+
+### 18.3 작업 완료 시 체크리스트
+
+```bash
+# 1. 테스트
+python3 auto_sports_notifier.py --soccer --test
+
+# 2. 커밋 (상세 메시지!)
+git add . && git commit -m "feat: 작업 내용
+
+- 구현 1
+- 구현 2
+
+Co-Authored-By: Claude [Model] <noreply@anthropic.com>"
+
+# 3. 푸시
+git push origin main
+
+# 4. 스킬 파일 업데이트 (중요!)
+# .claude/skills/current-work-status.md 업데이트
+# .claude/skills/realtime-data-integration.md 체크리스트 업데이트
+```
+
+### 18.4 현재 진행 중인 대규모 작업
+
+**v4.0.0: 실시간 데이터 연동**
+
+| 문서 | 내용 |
+|------|------|
+| [docs/REALTIME_DATA_INTEGRATION_PLAN.md](docs/REALTIME_DATA_INTEGRATION_PLAN.md) | 상세 구현 계획서 |
+| [.claude/skills/realtime-data-integration.md](.claude/skills/realtime-data-integration.md) | Phase별 체크리스트 |
+| [.claude/skills/current-work-status.md](.claude/skills/current-work-status.md) | 현재 진행 상태 |
+
+**다음 권장 작업**: Phase 4.1 - 팀명 매핑 DB 구축 (모든 데이터 수집의 기반)
+
+---
+
 > 이 문서를 통해 새로운 작업자도 프로젝트 방향성을 이해하고 일관된 개발을 할 수 있습니다.
