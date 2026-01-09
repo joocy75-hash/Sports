@@ -1,6 +1,7 @@
 # GitHub Actions: Group B (Sports Analysis) Deployment
 # Target Server: 141.164.55.245 (Seoul)
-# Path: /root/service_b
+# Path: /opt/sports-analysis
+# Strategy: Git pull + Docker rebuild
 
 name: Deploy Group B (Sports Analysis)
 
@@ -12,14 +13,17 @@ on:
       - 'src/**'
       - 'frontend/**'
       - 'auto_sports_notifier.py'
-      - 'deployment/hetzner/group_b_automation/**'
+      - 'config/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'requirements.txt'
       - '.github/workflows/deploy-group-b.yml'
   workflow_dispatch:
 
 env:
   SERVER_IP: 141.164.55.245
   SERVER_USER: root
-  REMOTE_DIR: /root/service_b
+  REMOTE_DIR: /opt/sports-analysis
 
 jobs:
   deploy:
@@ -37,74 +41,49 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      # 1. Docker Compose 파일 전송
-      - name: Copy Docker Compose
+      # 1. Git pull로 코드 업데이트
+      - name: Pull Latest Code
         run: |
-          scp deployment/hetzner/group_b_automation/docker-compose.yml ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:${{ env.REMOTE_DIR }}/docker-compose.yml
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "cd ${{ env.REMOTE_DIR }} && git fetch origin main && git reset --hard origin/main"
 
-      # 2. Backend 코드 동기화
-      - name: Sync Backend Code
+      # 2. Docker 이미지 재빌드 및 서비스 재시작
+      - name: Rebuild and Restart Services
         run: |
-          rsync -avz --delete \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            --exclude='.state' \
-            --exclude='logs' \
-            --exclude='.env' \
-            --exclude='node_modules' \
-            --exclude='.git' \
-            ./src \
-            ./auto_sports_notifier.py \
-            ./auto_telegram_bot.py \
-            ./basketball_w5l_analyzer.py \
-            ./basketball_w5l_notifier.py \
-            ./collect_and_notify.py \
-            ./requirements.txt \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:${{ env.REMOTE_DIR }}/sports_analysis/
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "cd ${{ env.REMOTE_DIR }} && docker compose down && docker compose up -d --build"
 
-      # 3. Frontend 코드 동기화
-      - name: Sync Frontend Code
-        run: |
-          rsync -avz --delete \
-            --exclude='node_modules' \
-            --exclude='dist' \
-            --exclude='.git' \
-            ./frontend/ \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:${{ env.REMOTE_DIR }}/frontend/
-
-      # 4. 서비스 재배포 (Build & Up)
-      - name: Deploy Services
-        run: |
-          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "cd ${{ env.REMOTE_DIR }} && docker compose up -d --build --remove-orphans"
-
-      # 5. 불필요한 이미지 정리
+      # 3. 불필요한 이미지 정리
       - name: Prune Docker Images
         run: |
           ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker image prune -f"
 
-      # 6. 상태 확인
+      # 4. 헬스 체크
       - name: Check Health
         run: |
-          sleep 10
-          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "cd ${{ env.REMOTE_DIR }} && docker compose ps"
+          sleep 15
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker ps | grep sports_analysis"
 
-      # 7. 성공 알림
+      # 5. 성공 알림
       - name: Notify Telegram (Success)
         if: success()
+        env:
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          COMMIT_SHORT="${GITHUB_SHA:0:7}"
+          COMMIT_SHORT="${COMMIT_SHA:0:7}"
           DEPLOY_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="Markdown" \
             -d text="✅ *스포츠 분석(Group B) 배포 성공*%0A%0A📦 커밋: \`${COMMIT_SHORT}\`%0A🌍 서버: Seoul (${{ env.SERVER_IP }})%0A🕐 시간: ${DEPLOY_TIME}"
 
-      # 8. 실패 알림
+      # 6. 실패 알림
       - name: Notify Telegram (Failure)
         if: failure()
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          COMMIT_SHORT="${GITHUB_SHA:0:7}"
-          LOG_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          COMMIT_SHORT="${COMMIT_SHA:0:7}"
+          LOG_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="Markdown" \
