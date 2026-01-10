@@ -677,7 +677,7 @@ except Exception as e:
 
 ---
 
-## 10. 현재 구현 상태 (2026-01-10 v3.3.0)
+## 10. 현재 구현 상태 (2026-01-10 v4.0.0)
 
 ### ✅ 완료된 기능
 
@@ -697,17 +697,37 @@ except Exception as e:
 | 적중률 추적 시스템 | ✅ | v3.1 | 예측/결과 비교 |
 | 경기 결과 자동 수집 | ✅ | v3.1 | KSPO API 연동 |
 | 한국 서버 마이그레이션 | ✅ | v3.2.1 | Geo-blocking 해결 |
-| **젠토토 크롤러** | ✅ | **v3.3.0** | **1순위 데이터 소스** ⭐ |
-| **3단계 데이터 소스 체계** | ✅ | **v3.3.0** | 젠토토 → 베트맨 → API |
-| **다음 회차 미리 확보** | ✅ | **v3.3.0** | 발매 전 경기 수집 |
+| 젠토토 크롤러 | ✅ | v3.3.0 | 1순위 데이터 소스 |
+| 3단계 데이터 소스 체계 | ✅ | v3.3.0 | 젠토토 → 베트맨 → API |
+| 다음 회차 미리 확보 | ✅ | v3.3.0 | 발매 전 경기 수집 |
+| **EnhancedUpsetDetector** | ✅ | **v4.0.0** | **이변 감지 강화 시스템** ⭐ |
+| **실시간 데이터 수집 모듈** | ✅ | **v4.0.0** | FormCollector, H2HCollector 등 |
+| **AI 프롬프트 이변 감지 강화** | ✅ | **v4.0.0** | 이변 체크리스트 추가 |
+| **MatchContext 확장** | ✅ | **v4.0.0** | 실시간 데이터 통합 지원 |
 
 ### 🔄 개선 필요
 
-- [ ] 실시간 팀 통계 연동 (현재: 하드코딩된 시즌 평균)
+- [ ] 실시간 팀 통계 API 연동 (API-Football 등)
 - [ ] Gemini API 키 갱신 필요 (현재 403 오류)
 - [ ] 적중률 대시보드 UI 개발
+- [ ] EnhancedUpsetDetector 실시간 데이터 연결
 
-### 📦 v3.3.0 신규 모듈 (2026-01-10)
+### 📦 v4.0.0 신규 모듈 (2026-01-10) ⭐ NEW
+
+**이변 감지 강화 시스템:**
+- **`enhanced_upset_detector.py`**: 종합 이변 감지 모듈 (800+ 라인)
+- **`form_collector.py`**: 최근 폼 수집 (855 라인)
+- **`h2h_collector.py`**: 상대전적 수집 (679 라인)
+- **`injuries_collector.py`**: 부상자 정보 수집
+- **`odds_collector.py`**: 배당률 변동 수집
+- **`match_enricher.py`**: 데이터 통합 매니저
+- **`team_stats_collector.py`**: 팀 통계 수집 (787 라인)
+
+**AI 분석 개선:**
+- **`base_analyzer.py`**: 이변 감지 체크리스트 추가
+- **`models.py`**: MatchContext 확장 (실시간 데이터 지원)
+
+### 📦 v3.3.0 모듈 (2026-01-10)
 
 - **`zentoto_crawler.py`**: 젠토토 웹 크롤러 (1순위 데이터 소스)
 - **`test_zentoto_crawler.py`**: 젠토토 크롤러 통합 테스트
@@ -1059,15 +1079,59 @@ ssh root@141.164.55.245 "cd /opt/sports-analysis && git log --oneline -3"
 
 ## 13. 변경 이력
 
-### 최근 변경사항 (v3.x)
+### 최근 변경사항 (v4.x)
 
 | 날짜 | 버전 | 주요 변경 | 상세 |
 |------|------|----------|------|
-| **2026-01-10** | **v3.3.0** | 🎯 젠토토 크롤러 도입 | 3단계 데이터 소스 체계 구축 |
+| **2026-01-10** | **v4.0.0** | ⭐ **이변 감지 강화 시스템** | EnhancedUpsetDetector, 실시간 데이터 모듈 |
+| 2026-01-10 | v3.3.0 | 🎯 젠토토 크롤러 도입 | 3단계 데이터 소스 체계 구축 |
 | 2026-01-05 | v3.2.1 | 🌏 한국 서버 마이그레이션 | Geo-blocking 해결 |
 | 2026-01-04 | v3.2.0 | 🚨 치명적 버그 수정 | 캐시/크롤러/예측저장 |
 | 2025-12-25 | v3.1.0 | 적중률 추적 시스템 | 예측/결과 비교 자동화 |
 | 2025-12-25 | v3.0.0 | 베트맨 크롤러 | 이중화 데이터 수집 |
+
+### v4.0.0 상세 (2026-01-10) ⭐ 이변 감지 강화
+
+**핵심 변경: 언더독/이변 경기 탐지 능력 대폭 강화**
+
+사용자 피드백 반영:
+> "현재 프로젝트는 정해진 배당으로만 판단하면 당연 승부예측이 가능하지만,
+> 언더독, 이변이 있는 경기를 찾는데 중점을 둬야한다고 생각해.
+> 14경기를 다 맞춰야하고 추가적인 복수배팅이 가능하니
+> 언더독 이변이 있을 경기를 찾는걸 더 신경써 줬으면해"
+
+**구현된 기능:**
+
+1. **EnhancedUpsetDetector 신규 모듈** (`src/services/data/enhanced_upset_detector.py`)
+   - 800+ 라인의 종합 이변 감지 시스템
+   - 4가지 신호 카테고리 분석: 확률, 폼, 상대전적, 상황
+   - 가중치 기반 100점 만점 점수 시스템
+
+2. **실시간 데이터 수집 모듈** (`src/services/data/`)
+   - `form_collector.py`: 최근 5경기 폼 분석 (855 라인)
+   - `h2h_collector.py`: 상대전적 수집 (679 라인)
+   - `team_stats_collector.py`: 팀 통계 수집 (787 라인)
+   - `injuries_collector.py`: 부상자 정보 수집
+   - `odds_collector.py`: 배당률 변동 수집
+   - `match_enricher.py`: 데이터 통합 매니저
+
+3. **AI 프롬프트 이변 감지 강화** (`src/services/ai/base_analyzer.py`)
+   - 이변 감지 체크리스트 추가
+   - `upset_risk` 필드 JSON 출력에 추가
+   - 신뢰도 기준 복수 베팅 권장 로직
+
+4. **MatchContext 확장** (`src/services/ai/models.py`)
+   - `home_form_detail`, `away_form_detail` 필드 추가
+   - `home_injuries`, `away_injuries` 필드 추가
+   - `odds_detail`, `data_completeness` 필드 추가
+   - `from_enriched()` 클래스메서드 추가
+   - `to_prompt_string()` 리치 포맷팅 개선
+
+5. **auto_sports_notifier.py 통합**
+   - `_select_multi_games()` 메서드 개선
+   - EnhancedUpsetDetector 활용 (실시간 데이터 있을 때)
+   - 기존 로직 폴백 지원
+   - 이변 위험도 표시 (🔴HIGH / 🟡MED / 🟢LOW)
 
 ### v3.3.0 상세 (2026-01-10)
 - ⭐ **젠토토 크롤러 신규 구현** (`zentoto_crawler.py`)
@@ -1575,11 +1639,182 @@ python3 test_zentoto_crawler.py --all
 
 ---
 
-## 17. 문서 정보
+## 17. EnhancedUpsetDetector 상세 (v4.0.0) ⭐ NEW
 
-**버전**: v3.3.0
-**최종 업데이트**: 2026-01-10 04:50 KST
-**최종 커밋**: cf05ec0
+### 17.1 핵심 개념
+
+**프로토 14경기의 본질적 문제:**
+```
+일반 베팅: 승률 높은 경기 → 70% 확률 경기만 골라도 OK
+프로토 14경기: ALL or NOTHING → 1개 이변으로 전액 손실
+
+따라서 "승률 예측"이 아닌 "이변 감지"가 핵심!
+```
+
+**EnhancedUpsetDetector의 역할:**
+- 배당률/AI 확률 외에 **실시간 상황 데이터**까지 분석
+- 강팀 연패, 약팀 연승, 상대전적 역전 등 **이변 신호** 탐지
+- 복수 베팅 4경기를 **정교하게 선정**
+
+### 17.2 이변 신호 4가지 카테고리
+
+```python
+# 1. 확률 신호 (Probability Signals)
+- 확률 분포 애매함 (1위-2위 차이 < 15%)
+- AI 신뢰도 낮음 (confidence < 50%)
+- AI 모델 간 불일치 (agreement < 60%)
+
+# 2. 폼 신호 (Form Signals) ⭐ v4.0.0 NEW
+- 강팀 연패 중 (2연패 +12점, 3연패 +15점)
+- 약팀 연승 중 (2연승 +10점, 3연승 +12점)
+- 홈/원정 성적 역전
+
+# 3. 상대전적 신호 (H2H Signals) ⭐ v4.0.0 NEW
+- H2H가 배당률과 반대 (+18점)
+- 상대전적 5:5 박빙 (+8점)
+
+# 4. 상황 신호 (Situation Signals) ⭐ v4.0.0 NEW
+- 주요 선수 부상 (+15점)
+- 강등권 싸움 (+10점)
+- 더비 매치 (+8점)
+- 소화 경기 (Nothing to play) (+5점)
+```
+
+### 17.3 가중치 점수 시스템
+
+```python
+class UpsetSignalWeights:
+    """이변 신호 가중치 (100점 만점)"""
+
+    # 확률 신호 (최대 50점)
+    PROB_GAP_VERY_SMALL = 20   # 차이 < 10%
+    PROB_GAP_SMALL = 15        # 차이 < 15%
+    PROB_GAP_MEDIUM = 10       # 차이 < 20%
+    CONFIDENCE_VERY_LOW = 15   # 신뢰도 < 40%
+    AI_DISAGREEMENT_HIGH = 15  # 일치도 < 50%
+
+    # 폼 신호 (최대 27점)
+    FAVORITE_LOSING_STREAK_3 = 15  # 강팀 3연패
+    FAVORITE_LOSING_STREAK_2 = 12  # 강팀 2연패
+    UNDERDOG_WINNING_STREAK_3 = 12 # 약팀 3연승
+    UNDERDOG_WINNING_STREAK_2 = 10 # 약팀 2연승
+
+    # 상대전적 신호 (최대 26점)
+    H2H_OPPOSITE_TO_ODDS = 18  # H2H가 배당과 반대
+    H2H_EVEN = 8               # 상대전적 박빙
+
+    # 상황 신호 (최대 38점)
+    KEY_PLAYER_INJURY = 15     # 핵심 선수 부상
+    MULTIPLE_INJURIES = 10     # 다수 부상자
+    RELEGATION_BATTLE = 10     # 강등권 싸움
+    DERBY_MATCH = 8            # 더비 매치
+    NOTHING_TO_PLAY = 5        # 소화 경기
+```
+
+### 17.4 이변 위험도 판정
+
+```python
+# 점수별 위험도
+if upset_score >= 50:
+    risk_level = "high"      # 🔴 반드시 복수 베팅
+    multi_bet_recommended = True
+elif upset_score >= 30:
+    risk_level = "medium"    # 🟡 복수 베팅 권장
+    multi_bet_recommended = True
+else:
+    risk_level = "low"       # 🟢 단일 베팅 가능
+    multi_bet_recommended = False
+```
+
+### 17.5 사용 예시
+
+```python
+from src.services.data import get_upset_detector
+
+detector = get_upset_detector()
+
+# 단일 경기 분석
+analysis = detector.analyze_upset_potential(
+    home_team="맨시티",
+    away_team="리버풀",
+    ai_probs={"home": 0.42, "draw": 0.30, "away": 0.28},
+    ai_confidence=0.52,
+    ai_agreement=0.48,
+    home_form={"wins": 2, "draws": 1, "losses": 2},  # 최근 5경기
+    away_form={"wins": 4, "draws": 0, "losses": 1},
+    h2h_stats={"home_wins": 3, "draws": 2, "away_wins": 5},
+    home_injuries=["로드리 (ACL)"],
+    away_injuries=[]
+)
+
+print(f"이변 점수: {analysis.upset_score}")     # 65.0
+print(f"위험도: {analysis.upset_risk}")         # "high"
+print(f"복수 베팅: {analysis.multi_bet_recommended}")  # True
+print(f"신호 수: {len(analysis.signals)}")      # 4
+
+# 14경기 일괄 분석
+analyses = detector.analyze_all_matches(enriched_contexts)
+multi_games = detector.select_multi_bet_games(analyses, top_n=4)
+```
+
+### 17.6 auto_sports_notifier.py 통합
+
+```python
+def _select_multi_games(
+    self,
+    predictions: List[GamePrediction],
+    game_type: str,
+    max_multi: int = 4,
+    enriched_contexts: List = None  # ⭐ v4.0.0 NEW
+) -> List[Tuple[int, str, str]]:
+    """
+    복식 베팅 경기 선정 (이변 가능성 높은 4경기)
+
+    v4.0.0 업데이트:
+    - EnhancedUpsetDetector 통합 (실시간 데이터 활용)
+    - 폼, 상대전적, 부상자 정보까지 분석
+    - 실시간 데이터 없으면 기존 로직 폴백
+    """
+    # EnhancedUpsetDetector 사용 시도
+    if enriched_contexts:
+        upset_detector = get_upset_detector()
+        analyses = upset_detector.analyze_all_matches(enriched_contexts)
+        # ... 정교한 분석
+    else:
+        # 기존 로직 (확률/신뢰도/AI일치도만 사용)
+        upset_score = self._calculate_basic_upset_score(pred)
+```
+
+### 17.7 로그 출력 예시
+
+```
+2026-01-10 08:28:58 - 🎰 복수 베팅: 이변 가능성 상위 4경기 선정
+   - 04번: 브레멘/호펜하임 (score=65 🔴HIGH)
+   - 05번: 마인츠05/무승부 (score=52 🔴HIGH)
+   - 11번: US레체/무승부 (score=48 🟡MED)
+   - 07번: 쾰른/하이덴하 (score=35 🟡MED)
+```
+
+### 17.8 향후 개선 사항
+
+실시간 데이터 API 연동 시 전체 기능 활성화:
+
+```python
+# 현재 (v4.0.0): 기본 로직만 사용
+upset_score = self._calculate_basic_upset_score(pred)
+
+# 향후 (API 연동 후): EnhancedUpsetDetector 완전 활성화
+enricher = get_match_enricher()
+enriched = await enricher.enrich_all_matches(games)
+multi_games = self._select_multi_games(predictions, game_type, enriched_contexts=enriched)
+```
+
+---
+
+## 18. 문서 정보
+
+**버전**: v4.0.0
+**최종 업데이트**: 2026-01-10 08:30 KST
 **프로덕션 상태**: 🟢 정상 운영 중
 
 ### 빠른 참조
@@ -1589,6 +1824,7 @@ python3 test_zentoto_crawler.py --all
 | 프로젝트 핵심 목적 | 섹션 1 |
 | 이변 감지 로직 | 섹션 3.2 |
 | 데이터 수집 아키텍처 | 섹션 6 |
+| **EnhancedUpsetDetector** | **섹션 17** ⭐ NEW |
 | 젠토토 크롤러 | 섹션 16 |
 | 적중률 추적 시스템 | 섹션 15 |
 | 프로덕션 서버 정보 | 섹션 12-2 |

@@ -32,6 +32,12 @@ from src.services.telegram_notifier import TelegramNotifier
 from src.services.ai_orchestrator import AIOrchestrator
 from src.services.ai.models import MatchContext, SportType
 from src.services.prediction_tracker import prediction_tracker
+from src.services.data import (
+    EnhancedUpsetDetector,
+    get_upset_detector,
+    MatchEnricher,
+    get_match_enricher,
+)
 from src.config.constants import (
     UpsetDetectionConstants as UDC,
     SystemConstants,
@@ -411,69 +417,55 @@ class AutoSportsNotifier:
         self,
         predictions: List[GamePrediction],
         game_type: str,
-        max_multi: int = UDC.DEFAULT_MULTI_GAMES
+        max_multi: int = UDC.DEFAULT_MULTI_GAMES,
+        enriched_contexts: List = None
     ) -> List[Tuple[int, str, str]]:
         """
         복식 베팅 경기 선정 (이변 가능성 높은 4경기)
 
+        v4.0.0 업데이트:
+        - EnhancedUpsetDetector 통합 (실시간 데이터 활용)
+        - 폼, 상대전적, 부상자 정보까지 분석
+        - 강팀 연패, 약팀 연승, H2H 역전 등 상황 분석
+
         핵심 로직:
         1. 모든 경기에 대해 이변 점수(upset_score) 계산
-        2. 이변 점수가 높은 순으로 정렬
-        3. 상위 4개 선정 (항상 4경기 복수 베팅)
+        2. 실시간 데이터가 있으면 EnhancedUpsetDetector로 정교한 분석
+        3. 이변 점수가 높은 순으로 정렬
+        4. 상위 4개 선정 (항상 4경기 복수 베팅)
 
         Returns:
             List[(game_number, selections, probs_str)]
         """
         candidates = []
 
+        # EnhancedUpsetDetector 사용 시도
+        upset_analyses = {}
+        if enriched_contexts:
+            try:
+                upset_detector = get_upset_detector()
+                analyses = upset_detector.analyze_all_matches(enriched_contexts)
+                # match_id는 "home_team_vs_away_team" 형식으로 생성
+                upset_analyses = {
+                    f"{a.home_team}_vs_{a.away_team}": a for a in analyses
+                }
+                logger.info(f"🔍 EnhancedUpsetDetector: {len(analyses)}경기 이변 분석 완료")
+            except Exception as e:
+                logger.warning(f"EnhancedUpsetDetector 실패, 기본 로직 사용: {e}")
+
         for pred in predictions:
-            # 이변 신호 점수 계산 (모든 경기에 대해)
+            # 이변 신호 점수 계산
             upset_score = 0.0
 
-            # 확률 분포 계산
-            probs = sorted([pred.prob_home, pred.prob_draw, pred.prob_away], reverse=True)
-            prob_gap = probs[0] - probs[1]
-
-            # 1. 확률 분포 애매함 (1위-2위 차이가 작을수록 높은 점수)
-            if prob_gap < UDC.PROB_GAP_VERY_HIGH:
-                upset_score += UDC.PROB_GAP_SCORE_VERY_HIGH  # 매우 애매함
-            elif prob_gap < UDC.PROB_GAP_HIGH:
-                upset_score += UDC.PROB_GAP_SCORE_HIGH
-            elif prob_gap < UDC.PROB_GAP_MEDIUM:
-                upset_score += UDC.PROB_GAP_SCORE_MEDIUM
-            elif prob_gap < UDC.PROB_GAP_LOW:
-                upset_score += UDC.PROB_GAP_SCORE_LOW
-            elif prob_gap < UDC.PROB_GAP_VERY_LOW:
-                upset_score += UDC.PROB_GAP_SCORE_VERY_LOW
-
-            # 2. 신뢰도 기반 점수 (낮을수록 이변 가능성 높음)
-            if pred.confidence < UDC.CONFIDENCE_VERY_LOW:
-                upset_score += UDC.CONFIDENCE_SCORE_VERY_LOW
-            elif pred.confidence < UDC.CONFIDENCE_LOW:
-                upset_score += UDC.CONFIDENCE_SCORE_LOW
-            elif pred.confidence < UDC.CONFIDENCE_MEDIUM:
-                upset_score += UDC.CONFIDENCE_SCORE_MEDIUM
-            elif pred.confidence < UDC.CONFIDENCE_HIGH:
-                upset_score += UDC.CONFIDENCE_SCORE_HIGH
-
-            # 3. AI 불일치 (일치도 낮을수록 이변 가능성) - AI 사용 시에만
-            if pred.ai_agreement > 0:
-                if pred.ai_agreement < UDC.AI_AGREEMENT_VERY_LOW:
-                    upset_score += UDC.AI_AGREEMENT_SCORE_VERY_LOW
-                elif pred.ai_agreement < UDC.AI_AGREEMENT_LOW:
-                    upset_score += UDC.AI_AGREEMENT_SCORE_LOW
-                elif pred.ai_agreement < UDC.AI_AGREEMENT_MEDIUM:
-                    upset_score += UDC.AI_AGREEMENT_SCORE_MEDIUM
-                elif pred.ai_agreement < UDC.AI_AGREEMENT_HIGH:
-                    upset_score += UDC.AI_AGREEMENT_SCORE_HIGH
-
-            # 4. 무승부/5 확률 (높을수록 이변 가능성)
-            if pred.prob_draw >= UDC.DRAW_PROB_HIGH:
-                upset_score += UDC.DRAW_PROB_SCORE_HIGH
-            elif pred.prob_draw >= UDC.DRAW_PROB_MEDIUM:
-                upset_score += UDC.DRAW_PROB_SCORE_MEDIUM
-            elif pred.prob_draw >= UDC.DRAW_PROB_LOW:
-                upset_score += UDC.DRAW_PROB_SCORE_LOW
+            # EnhancedUpsetDetector 분석 결과가 있으면 우선 사용
+            match_id = f"{pred.home_team}_vs_{pred.away_team}"
+            if match_id in upset_analyses:
+                analysis = upset_analyses[match_id]
+                upset_score = analysis.upset_score
+                logger.debug(f"  {pred.game_number:02d}번: EnhancedUpsetDetector score={upset_score:.0f}")
+            else:
+                # 기존 로직 (폴백)
+                upset_score = self._calculate_basic_upset_score(pred)
 
             # 상위 2개 선택지 결정
             if game_type == "soccer":
@@ -501,7 +493,9 @@ class AutoSportsNotifier:
 
         logger.info(f"🎰 복수 베팅: 이변 가능성 상위 {len(multi_games)}경기 선정")
         for c in candidates[:max_multi]:
-            logger.info(f"   - {c[0]:02d}번: {c[1]} (upset_score={c[3]:.0f})")
+            # 이변 위험도 표시
+            risk_level = "🔴HIGH" if c[3] >= 50 else "🟡MED" if c[3] >= 30 else "🟢LOW"
+            logger.info(f"   - {c[0]:02d}번: {c[1]} (score={c[3]:.0f} {risk_level})")
 
         # 선정된 경기에 복식 표시
         multi_nums = {m[0] for m in multi_games}
@@ -512,6 +506,61 @@ class AutoSportsNotifier:
                 pred.multi_selections = match[1].split("/")
 
         return multi_games
+
+    def _calculate_basic_upset_score(self, pred: GamePrediction) -> float:
+        """
+        기본 이변 점수 계산 (실시간 데이터 없을 때 사용)
+
+        확률/신뢰도/AI일치도 기반 계산
+        """
+        upset_score = 0.0
+
+        # 확률 분포 계산
+        probs = sorted([pred.prob_home, pred.prob_draw, pred.prob_away], reverse=True)
+        prob_gap = probs[0] - probs[1]
+
+        # 1. 확률 분포 애매함 (1위-2위 차이가 작을수록 높은 점수)
+        if prob_gap < UDC.PROB_GAP_VERY_HIGH:
+            upset_score += UDC.PROB_GAP_SCORE_VERY_HIGH
+        elif prob_gap < UDC.PROB_GAP_HIGH:
+            upset_score += UDC.PROB_GAP_SCORE_HIGH
+        elif prob_gap < UDC.PROB_GAP_MEDIUM:
+            upset_score += UDC.PROB_GAP_SCORE_MEDIUM
+        elif prob_gap < UDC.PROB_GAP_LOW:
+            upset_score += UDC.PROB_GAP_SCORE_LOW
+        elif prob_gap < UDC.PROB_GAP_VERY_LOW:
+            upset_score += UDC.PROB_GAP_SCORE_VERY_LOW
+
+        # 2. 신뢰도 기반 점수 (낮을수록 이변 가능성 높음)
+        if pred.confidence < UDC.CONFIDENCE_VERY_LOW:
+            upset_score += UDC.CONFIDENCE_SCORE_VERY_LOW
+        elif pred.confidence < UDC.CONFIDENCE_LOW:
+            upset_score += UDC.CONFIDENCE_SCORE_LOW
+        elif pred.confidence < UDC.CONFIDENCE_MEDIUM:
+            upset_score += UDC.CONFIDENCE_SCORE_MEDIUM
+        elif pred.confidence < UDC.CONFIDENCE_HIGH:
+            upset_score += UDC.CONFIDENCE_SCORE_HIGH
+
+        # 3. AI 불일치 (일치도 낮을수록 이변 가능성)
+        if pred.ai_agreement > 0:
+            if pred.ai_agreement < UDC.AI_AGREEMENT_VERY_LOW:
+                upset_score += UDC.AI_AGREEMENT_SCORE_VERY_LOW
+            elif pred.ai_agreement < UDC.AI_AGREEMENT_LOW:
+                upset_score += UDC.AI_AGREEMENT_SCORE_LOW
+            elif pred.ai_agreement < UDC.AI_AGREEMENT_MEDIUM:
+                upset_score += UDC.AI_AGREEMENT_SCORE_MEDIUM
+            elif pred.ai_agreement < UDC.AI_AGREEMENT_HIGH:
+                upset_score += UDC.AI_AGREEMENT_SCORE_HIGH
+
+        # 4. 무승부/5 확률 (높을수록 이변 가능성)
+        if pred.prob_draw >= UDC.DRAW_PROB_HIGH:
+            upset_score += UDC.DRAW_PROB_SCORE_HIGH
+        elif pred.prob_draw >= UDC.DRAW_PROB_MEDIUM:
+            upset_score += UDC.DRAW_PROB_SCORE_MEDIUM
+        elif pred.prob_draw >= UDC.DRAW_PROB_LOW:
+            upset_score += UDC.DRAW_PROB_SCORE_LOW
+
+        return upset_score
 
     # ==================== 예측 저장 ====================
 
