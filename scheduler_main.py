@@ -52,8 +52,8 @@ class SchedulerDaemon:
         self.stop()
         sys.exit(0)
 
-    def start(self):
-        """스케줄러 시작"""
+    async def start_async(self):
+        """스케줄러 시작 (async)"""
         # 시그널 핸들러 등록
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
@@ -64,27 +64,40 @@ class SchedulerDaemon:
         logger.info("=" * 60)
         logger.info("")
 
-        # 스케줄러 시작
+        # 스케줄러 시작 (이미 asyncio 이벤트 루프 실행 중)
         self.scheduler.start()
         self.running = True
 
         # 시작 알림
-        asyncio.run(self._send_start_notification())
-
-        # 이벤트 루프 실행
         try:
-            asyncio.get_event_loop().run_forever()
-        except (KeyboardInterrupt, SystemExit):
-            self.stop()
+            await self._send_start_notification()
+        except Exception as e:
+            logger.error(f"시작 알림 전송 실패: {e}")
 
-    def stop(self):
-        """스케줄러 종료"""
+        # 메인 루프 대기 (스케줄러가 계속 실행되도록)
+        try:
+            while self.running:
+                await asyncio.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            await self.stop_async()
+
+    async def stop_async(self):
+        """스케줄러 종료 (async)"""
         if self.running:
             self.scheduler.stop()
             self.running = False
 
             # 종료 알림
-            asyncio.run(self._send_stop_notification())
+            try:
+                await self._send_stop_notification()
+            except Exception as e:
+                logger.error(f"종료 알림 전송 실패: {e}")
+    
+    def stop(self):
+        """스케줄러 종료 (동기)"""
+        if self.running:
+            self.scheduler.stop()
+            self.running = False
 
     async def _send_start_notification(self):
         """시작 알림"""
@@ -257,9 +270,9 @@ async def main():
         await test_all_jobs()
         return
 
-    # 데몬 모드 (기본)
+    # 데몬 모드 (기본) - AsyncIOScheduler는 asyncio 이벤트 루프 필요
     daemon = SchedulerDaemon()
-    daemon.start()
+    await daemon.start_async()
 
 
 if __name__ == "__main__":
