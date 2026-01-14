@@ -1098,6 +1098,263 @@ ssh root@141.164.55.245 "cd /opt/sports-analysis && git log --oneline -3"
 
 ---
 
+## 12-4. 🚨 배포 워크플로우 상세 가이드 (필독!)
+
+### 핵심 원칙: 로컬 → GitHub → 서버 (단방향)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    배포 워크플로우 (필수 준수!)                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   [로컬 Mac]  ──git push──▶  [GitHub]  ──Actions──▶  [원격 서버]     │
+│       │                         │                        │          │
+│   코드 수정                   main 브랜치              자동 배포      │
+│   테스트                      CI/CD 트리거             Docker 재빌드  │
+│   커밋                                                              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### ⚠️ 절대 금지 사항
+
+```
+❌ 원격 서버에서 직접 코드 수정 (docker exec로 파일 편집)
+❌ docker cp로 수동 파일 복사 (임시 테스트 외)
+❌ 서버에서 git pull 수동 실행
+❌ GitHub Actions 우회한 배포
+❌ 로컬 코드와 서버 코드 불일치 상태 유지
+```
+
+### ✅ 올바른 배포 절차
+
+```bash
+# 1. 로컬에서 코드 수정
+code src/services/zentoto_crawler.py
+
+# 2. 로컬 테스트 (필수!)
+python3 -c "
+import asyncio
+from src.services.zentoto_crawler import ZentotoCrawler
+async def test():
+    crawler = ZentotoCrawler()
+    info, games = await crawler.get_soccer_wdl_games()
+    print(f'{len(games)}경기 수집')
+asyncio.run(test())
+"
+
+# 3. Git 커밋 (의미있는 메시지!)
+git add .
+git commit -m "feat: 젠토토 크롤러 투표율 추출 기능 추가
+
+- 정적 크롤링으로 전환 (requests + BeautifulSoup)
+- home_vote, draw_vote, away_vote 필드 추가
+- 팀명 파싱 로직 개선"
+
+# 4. Git Push (GitHub Actions 자동 트리거)
+git push origin main
+
+# 5. GitHub Actions 모니터링
+# https://github.com/joocy75-hash/Sports/actions
+
+# 6. 배포 완료 후 서버 확인
+ssh root@141.164.55.245 "docker logs sports_analysis --tail=20"
+```
+
+### GitHub Actions 워크플로우 상세
+
+**파일 위치:** `.github/workflows/deploy-group-b.yml`
+
+**트리거 조건:**
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'           # 소스 코드
+      - 'auto_sports_notifier.py'
+      - 'config/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'requirements.txt'
+```
+
+**배포 단계:**
+1. `git fetch origin main && git reset --hard origin/main` - 최신 코드 동기화
+2. `docker compose down` - 기존 컨테이너 중지
+3. `docker compose up -d --build` - 새 이미지 빌드 및 실행
+4. `docker image prune -f` - 불필요한 이미지 정리
+5. 헬스체크 (15초 대기 후 확인)
+6. 텔레그램 알림 (성공/실패)
+
+### 긴급 수정 시에도 반드시 로컬에서!
+
+```bash
+# ❌ 잘못된 방법 (절대 금지!)
+ssh root@141.164.55.245
+docker exec -it sports_analysis bash
+vim /app/src/services/zentoto_crawler.py  # 절대 금지!
+
+# ✅ 올바른 방법 (긴급해도 이 절차 준수!)
+# 1. 로컬에서 수정
+vim src/services/zentoto_crawler.py
+
+# 2. 빠른 커밋 & 푸시
+git add . && git commit -m "hotfix: 긴급 버그 수정" && git push
+
+# 3. GitHub Actions 완료 대기 (약 2-3분)
+```
+
+---
+
+## 12-5. 🔒 서버 프로젝트 분리 가이드
+
+### 원격 서버 프로젝트 구조
+
+```
+141.164.55.245 (한국 서울)
+├── /opt/sports-analysis/          ← 스포츠 분석 (이 프로젝트) ✅
+│   ├── .git/                      ← Git 저장소 (GitHub 연동)
+│   ├── docker-compose.yml
+│   ├── src/
+│   └── ...
+│
+├── /root/group_b/                 ← Group B 프로젝트들 (별도)
+│   ├── sports_analysis/           ← ⚠️ 구버전 복사본 (사용 금지!)
+│   ├── naver-blog-bot/
+│   ├── strategy-research-lab/
+│   └── tradingview/
+│
+└── 기타 컨테이너들 (완전 분리)
+    ├── n8n-ai-workflow
+    ├── strategy-scheduler
+    ├── trading-backend
+    └── ...
+```
+
+### ⚠️ 중요: 프로젝트 경로 구분
+
+| 프로젝트 | 경로 | 상태 | 비고 |
+|---------|------|------|------|
+| **스포츠 분석 (활성)** | `/opt/sports-analysis/` | ✅ 사용 | Git 연동, CI/CD |
+| 스포츠 분석 (구버전) | `/root/group_b/sports_analysis/` | ❌ 사용 금지 | 구버전 복사본 |
+| 전략 연구소 | `/root/group_b/strategy-research-lab/` | 별도 | 다른 프로젝트 |
+| 트레이딩 시스템 | `/root/trading/` | 별도 | 다른 프로젝트 |
+
+### Docker 컨테이너 분리
+
+```bash
+# 스포츠 분석 컨테이너 (이 프로젝트)
+docker ps --filter "name=sports_analysis"
+# NAMES: sports_analysis
+# PORTS: 0.0.0.0:5001->8000/tcp
+
+# 다른 프로젝트 컨테이너들 (건드리지 말 것!)
+docker ps --filter "name=strategy"
+docker ps --filter "name=trading"
+docker ps --filter "name=n8n"
+```
+
+### 컨테이너 재시작 시 주의사항
+
+```bash
+# ✅ 올바른 방법: 스포츠 분석만 재시작
+cd /opt/sports-analysis
+docker compose down
+docker compose up -d --build
+
+# ❌ 잘못된 방법: 전체 컨테이너 영향
+docker stop $(docker ps -q)  # 절대 금지!
+docker system prune -a       # 다른 프로젝트 이미지 삭제됨!
+```
+
+### 볼륨 분리 (데이터 보존)
+
+```yaml
+# docker-compose.yml
+volumes:
+  sports_state:    # 스포츠 분석 전용 상태
+    driver: local
+  sports_logs:     # 스포츠 분석 전용 로그
+    driver: local
+```
+
+```bash
+# 볼륨 확인 (스포츠 분석 전용)
+docker volume ls | grep sports
+# sports-analysis_sports_state
+# sports-analysis_sports_logs
+
+# ⚠️ 다른 프로젝트 볼륨 건드리지 말 것!
+docker volume ls | grep -v sports
+```
+
+### 포트 분리
+
+| 프로젝트 | 포트 | 용도 |
+|---------|------|------|
+| **스포츠 분석** | **5001** | API 서버 |
+| 트레이딩 백엔드 | 8000 | API |
+| 트레이딩 프론트 | 3000 | Web |
+| n8n | 5678, 80 | 워크플로우 |
+| PostgreSQL | 5432 | DB |
+| Redis | 6379 | 캐시 |
+
+---
+
+## 12-6. 🔧 트러블슈팅 가이드
+
+### 문제 1: 로컬과 서버 코드 불일치
+
+**증상:** 로컬에서 수정했는데 서버에 반영 안됨
+
+**해결:**
+```bash
+# 1. GitHub Actions 상태 확인
+# https://github.com/joocy75-hash/Sports/actions
+
+# 2. 서버 Git 상태 확인
+ssh root@141.164.55.245 "cd /opt/sports-analysis && git log --oneline -3"
+
+# 3. 강제 동기화 (GitHub Actions 실패 시)
+ssh root@141.164.55.245 "cd /opt/sports-analysis && git fetch origin main && git reset --hard origin/main"
+
+# 4. Docker 재빌드
+ssh root@141.164.55.245 "cd /opt/sports-analysis && docker compose down && docker compose up -d --build"
+```
+
+### 문제 2: 컨테이너 재시작 후 수동 복사 파일 사라짐
+
+**원인:** `docker cp`로 복사한 파일은 이미지에 포함 안됨
+
+**해결:** 반드시 Git push → Docker rebuild 경로 사용
+
+### 문제 3: 다른 프로젝트 컨테이너 영향
+
+**예방:**
+```bash
+# 스포츠 분석 디렉토리에서만 docker compose 실행
+cd /opt/sports-analysis
+docker compose down  # 이 프로젝트만 영향
+
+# 절대 루트에서 실행 금지!
+cd /
+docker compose down  # ❌ 위험!
+```
+
+### 문제 4: GitHub Actions 실패
+
+**확인:**
+```bash
+# Actions 로그 확인
+# https://github.com/joocy75-hash/Sports/actions
+
+# SSH 키 문제인 경우
+# GitHub Settings → Secrets → HETZNER_SSH_KEY 확인
+```
+
+---
+
 ## 13. 변경 이력
 
 ### 최근 변경사항 (v3.x ~ v4.x)
