@@ -3,20 +3,22 @@
 회차 관리 모듈 - 축구 승무패 / 농구 승5패 정확한 회차 및 경기 관리
 
 핵심 기능:
-1. 젠토토 크롤러 우선 사용 (다음 회차 미리 확보 가능!)
-2. 베트맨 크롤러 (젠토토 실패 시)
-3. KSPO API fallback (모든 크롤러 실패 시)
-4. 회차별 경기 데이터 캐싱 및 검증
+1. 와이즈토토 크롤러 우선 사용 (안정적인 데이터 제공) ⭐ 1순위
+2. 젠토토 크롤러 (다음 회차 미리 확보 가능) ⭐ 2순위
+3. 베트맨 크롤러 (공식 발매 사이트) - 3순위
+4. KSPO API fallback (모든 크롤러 실패 시) - 4순위
+5. 회차별 경기 데이터 캐싱 및 검증
 
 데이터 소스 우선순위:
-- 1순위: 젠토토 크롤러 (다음 회차 미리 확보 가능) ⭐ NEW
-- 2순위: 베트맨 크롤러 (공식 발매 사이트)
-- 3순위: KSPO API (최후 수단)
+- 1순위: 와이즈토토 크롤러 (안정적인 분석 사이트) ⭐ NEW
+- 2순위: 젠토토 크롤러 (다음 회차 미리 확보 가능)
+- 3순위: 베트맨 크롤러 (공식 발매 사이트)
+- 4순위: KSPO API (최후 수단)
 
-젠토토의 장점:
-- 발매 전에 다음 회차 경기가 미리 등록됨
-- 베트맨 발매 마감 후에도 데이터 유지
-- 베트맨 UI 변경에 대한 백업
+와이즈토토의 장점:
+- 안정적인 데이터 제공
+- 베트맨보다 빠른 업데이트
+- 분석 정보 포함
 """
 
 import asyncio
@@ -82,8 +84,9 @@ class RoundManager:
         self.base_url = settings.kspo_todz_api_base_url
 
         # 크롤러 (Lazy initialization)
-        self._zentoto_crawler = None
-        self._betman_crawler = None
+        self._wisetoto_crawler = None  # 1순위
+        self._zentoto_crawler = None   # 2순위
+        self._betman_crawler = None    # 3순위
 
         # 상태 파일
         self.soccer_state_file = STATE_DIR / "soccer_wdl_round.json"
@@ -93,10 +96,24 @@ class RoundManager:
         self.soccer_next_round_file = STATE_DIR / "soccer_wdl_next_round.json"
         self.basketball_next_round_file = STATE_DIR / "basketball_w5l_next_round.json"
 
-        # 캐시 (별도 관리: 젠토토 캐시 + 베트맨 캐시 + API 캐시)
+        # 캐시 (별도 관리: 와이즈토토 캐시 + 젠토토 캐시 + 베트맨 캐시 + API 캐시)
         self._cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
+        self._wisetoto_cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
         self._zentoto_cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
         self._crawler_cache: Dict[str, Tuple[RoundInfo, List[Dict]]] = {}
+
+    async def _get_wisetoto_crawler(self):
+        """와이즈토토 크롤러 Lazy initialization (1순위)"""
+        if self._wisetoto_crawler is None:
+            try:
+                from src.services.wisetoto_crawler import WisetotoCrawler
+                self._wisetoto_crawler = WisetotoCrawler(headless=True)
+                await self._wisetoto_crawler._init_browser()
+                logger.info("와이즈토토 크롤러 초기화 완료")
+            except Exception as e:
+                logger.warning(f"와이즈토토 크롤러 초기화 실패: {e}")
+                self._wisetoto_crawler = None
+        return self._wisetoto_crawler
 
     async def _get_zentoto_crawler(self):
         """젠토토 크롤러 Lazy initialization"""
@@ -136,8 +153,9 @@ class RoundManager:
 
         Args:
             force_refresh: 캐시 무시하고 새로 조회
-            source: 데이터 소스 ("auto" | "zentoto" | "crawler" | "api")
-                - "auto": 젠토토 → 베트맨 → API 순서 (기본값)
+            source: 데이터 소스 ("auto" | "wisetoto" | "zentoto" | "crawler" | "api")
+                - "auto": 와이즈토토 → 젠토토 → 베트맨 → API 순서 (기본값)
+                - "wisetoto": 와이즈토토만 사용
                 - "zentoto": 젠토토만 사용
                 - "crawler": 베트맨만 사용
                 - "api": API만 사용
@@ -149,7 +167,14 @@ class RoundManager:
 
         # 캐시 확인 (5분 이내)
         if not force_refresh:
-            # 젠토토 캐시 우선 확인
+            # 와이즈토토 캐시 우선 확인
+            if source in ["auto", "wisetoto"] and cache_key in self._wisetoto_cache:
+                info, games = self._wisetoto_cache[cache_key]
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
+                    logger.info(f"와이즈토토 캐시에서 축구 승무패 {info.round_number}회차 로드")
+                    return info, games
+
+            # 젠토토 캐시 확인
             if source in ["auto", "zentoto"] and cache_key in self._zentoto_cache:
                 info, games = self._zentoto_cache[cache_key]
                 if (datetime.now() - info.updated_at).total_seconds() < 300:
@@ -170,7 +195,21 @@ class RoundManager:
                     logger.info(f"API 캐시에서 축구 승무패 {info.round_number}회차 로드")
                     return info, games
 
-        # 1순위: 젠토토 크롤러 (다음 회차 미리 확보 가능!)
+        # 1순위: 와이즈토토 크롤러 (안정적인 데이터 제공) ⭐
+        if source in ["auto", "wisetoto"]:
+            try:
+                info, games = await self._fetch_from_wisetoto("soccer")
+                if games and len(games) == 14:
+                    logger.info(f"✅ 와이즈토토: 축구 승무패 {info.round_number}회차 14경기 수집")
+                    self._wisetoto_cache[cache_key] = (info, games)
+                    self._save_state(self.soccer_state_file, info, games)
+                    return info, games
+                else:
+                    logger.warning(f"와이즈토토에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
+            except Exception as e:
+                logger.warning(f"와이즈토토 실패, 젠토토 fallback 시도: {e}")
+
+        # 2순위: 젠토토 크롤러 (다음 회차 미리 확보 가능!)
         if source in ["auto", "zentoto"]:
             try:
                 info, games = await self._fetch_from_zentoto("soccer")
@@ -184,7 +223,7 @@ class RoundManager:
             except Exception as e:
                 logger.warning(f"젠토토 실패, 베트맨 fallback 시도: {e}")
 
-        # 2순위: 베트맨 크롤러
+        # 3순위: 베트맨 크롤러
         if source in ["auto", "crawler"]:
             try:
                 info, games = await self._fetch_from_crawler("soccer")
@@ -198,7 +237,7 @@ class RoundManager:
             except Exception as e:
                 logger.warning(f"베트맨 실패, API fallback 시도: {e}")
 
-        # 3순위: KSPO API
+        # 4순위: KSPO API
         if source in ["auto", "api"]:
             try:
                 info, games = await self._fetch_from_api("soccer")
@@ -216,7 +255,7 @@ class RoundManager:
             logger.warning("저장된 데이터 사용 (모든 소스 실패)")
             return saved
 
-        raise ValueError("축구 승무패 경기 데이터를 찾을 수 없습니다 (젠토토/베트맨/API 모두 실패)")
+        raise ValueError("축구 승무패 경기 데이터를 찾을 수 없습니다 (와이즈토토/젠토토/베트맨/API 모두 실패)")
 
     # ========== 농구 승5패 ==========
 
@@ -230,8 +269,9 @@ class RoundManager:
 
         Args:
             force_refresh: 캐시 무시하고 새로 조회
-            source: 데이터 소스 ("auto" | "zentoto" | "crawler" | "api")
-                - "auto": 젠토토 → 베트맨 → API 순서 (기본값)
+            source: 데이터 소스 ("auto" | "wisetoto" | "zentoto" | "crawler" | "api")
+                - "auto": 와이즈토토 → 젠토토 → 베트맨 → API 순서 (기본값)
+                - "wisetoto": 와이즈토토만 사용
                 - "zentoto": 젠토토만 사용
                 - "crawler": 베트맨만 사용
                 - "api": API만 사용
@@ -243,7 +283,14 @@ class RoundManager:
 
         # 캐시 확인 (5분 이내)
         if not force_refresh:
-            # 젠토토 캐시 우선 확인
+            # 와이즈토토 캐시 우선 확인
+            if source in ["auto", "wisetoto"] and cache_key in self._wisetoto_cache:
+                info, games = self._wisetoto_cache[cache_key]
+                if (datetime.now() - info.updated_at).total_seconds() < 300:
+                    logger.info(f"와이즈토토 캐시에서 농구 승5패 {info.round_number}회차 로드")
+                    return info, games
+
+            # 젠토토 캐시 확인
             if source in ["auto", "zentoto"] and cache_key in self._zentoto_cache:
                 info, games = self._zentoto_cache[cache_key]
                 if (datetime.now() - info.updated_at).total_seconds() < 300:
@@ -264,7 +311,21 @@ class RoundManager:
                     logger.info(f"API 캐시에서 농구 승5패 {info.round_number}회차 로드")
                     return info, games
 
-        # 1순위: 젠토토 크롤러 (다음 회차 미리 확보 가능!)
+        # 1순위: 와이즈토토 크롤러 (안정적인 데이터 제공) ⭐
+        if source in ["auto", "wisetoto"]:
+            try:
+                info, games = await self._fetch_from_wisetoto("basketball")
+                if games and len(games) == 14:
+                    logger.info(f"✅ 와이즈토토: 농구 승5패 {info.round_number}회차 14경기 수집")
+                    self._wisetoto_cache[cache_key] = (info, games)
+                    self._save_state(self.basketball_state_file, info, games)
+                    return info, games
+                else:
+                    logger.warning(f"와이즈토토에서 {len(games) if games else 0}경기 수집 (14경기 필요)")
+            except Exception as e:
+                logger.warning(f"와이즈토토 실패, 젠토토 fallback 시도: {e}")
+
+        # 2순위: 젠토토 크롤러 (다음 회차 미리 확보 가능!)
         if source in ["auto", "zentoto"]:
             try:
                 info, games = await self._fetch_from_zentoto("basketball")
@@ -278,7 +339,7 @@ class RoundManager:
             except Exception as e:
                 logger.warning(f"젠토토 실패, 베트맨 fallback 시도: {e}")
 
-        # 2순위: 베트맨 크롤러
+        # 3순위: 베트맨 크롤러
         if source in ["auto", "crawler"]:
             try:
                 info, games = await self._fetch_from_crawler("basketball")
@@ -292,7 +353,7 @@ class RoundManager:
             except Exception as e:
                 logger.warning(f"베트맨 실패, API fallback 시도: {e}")
 
-        # 3순위: KSPO API
+        # 4순위: KSPO API
         if source in ["auto", "api"]:
             try:
                 info, games = await self._fetch_from_api("basketball")
@@ -313,6 +374,78 @@ class RoundManager:
         raise ValueError("농구 승5패 경기 데이터를 찾을 수 없습니다 (젠토토/베트맨/API 모두 실패)")
 
     # ========== 핵심 데이터 수집 로직 ==========
+
+    async def _fetch_from_wisetoto(self, sport: str) -> Tuple[RoundInfo, List[Dict]]:
+        """
+        와이즈토토 크롤러에서 데이터 수집 (1순위)
+
+        Args:
+            sport: "soccer" | "basketball"
+
+        Returns:
+            (RoundInfo, List[Dict]): 회차 정보 및 경기 목록 (API 형식으로 변환됨)
+        """
+        crawler = await self._get_wisetoto_crawler()
+        if not crawler:
+            raise ValueError("와이즈토토 크롤러를 초기화할 수 없습니다")
+
+        # 크롤러에서 데이터 수집
+        if sport == "soccer":
+            wisetoto_info, wisetoto_games = await crawler.get_soccer_wdl_games(force_refresh=True)
+        else:  # basketball
+            wisetoto_info, wisetoto_games = await crawler.get_basketball_w5l_games(force_refresh=True)
+
+        # 와이즈토토 데이터를 API 형식으로 변환
+        games = self._convert_wisetoto_to_api_format(wisetoto_info, wisetoto_games, sport)
+
+        # RoundInfo 변환
+        round_info = RoundInfo(
+            round_number=wisetoto_info.round_number,
+            game_type=wisetoto_info.game_type,
+            deadline=wisetoto_info.deadline,
+            match_date=wisetoto_info.match_date,
+            game_count=len(games),
+            status="open" if wisetoto_info.status == "발매중" else "closed",
+            updated_at=datetime.now(),
+        )
+
+        return round_info, games
+
+    def _convert_wisetoto_to_api_format(
+        self,
+        wisetoto_info,
+        wisetoto_games,
+        sport: str
+    ) -> List[Dict]:
+        """
+        와이즈토토 데이터를 KSPO API 형식으로 변환
+
+        Args:
+            wisetoto_info: 와이즈토토 RoundInfo
+            wisetoto_games: 와이즈토토 GameInfo 목록
+            sport: "soccer" | "basketball"
+
+        Returns:
+            API 형식 경기 목록 (기존 코드 호환)
+        """
+        games = []
+
+        for game in wisetoto_games:
+            api_game = {
+                "row_num": game.game_number,
+                "hteam_han_nm": game.home_team,
+                "ateam_han_nm": game.away_team,
+                "match_ymd": game.match_date,
+                "match_tm": game.match_time,
+                "match_sport_han_nm": "축구" if sport == "soccer" else "농구",
+                "obj_prod_nm": "토토/프로토",
+                "leag_han_nm": game.league_name or "",
+                "turn_no": wisetoto_info.round_number,
+                "source": "wisetoto",  # 데이터 출처 표시
+            }
+            games.append(api_game)
+
+        return games
 
     async def _fetch_from_zentoto(self, sport: str) -> Tuple[RoundInfo, List[Dict]]:
         """
@@ -357,7 +490,7 @@ class RoundManager:
         sport: str
     ) -> List[Dict]:
         """
-        젠토토 데이터를 KSPO API 형식으로 변환
+        젠토토 데이터를 KSPO API 형식으로 변환 (v2.0 - 투표율 포함)
 
         Args:
             zentoto_info: 젠토토 RoundInfo
@@ -365,7 +498,7 @@ class RoundManager:
             sport: "soccer" | "basketball"
 
         Returns:
-            API 형식 경기 목록 (기존 코드 호환)
+            API 형식 경기 목록 (기존 코드 호환 + 투표율 추가)
         """
         games = []
 
@@ -380,7 +513,11 @@ class RoundManager:
                 "obj_prod_nm": "토토/프로토",
                 "leag_han_nm": game.league_name or "",
                 "turn_no": zentoto_info.round_number,
-                "source": "zentoto",  # 데이터 출처 표시
+                "source": "zentoto",
+                # v2.0: 투표율 추가 (젠토토에서 수집)
+                "home_vote": game.home_vote,  # 승 투표율 (0.0~1.0)
+                "draw_vote": game.draw_vote,  # 무 투표율 (0.0~1.0)
+                "away_vote": game.away_vote,  # 패 투표율 (0.0~1.0)
             }
             games.append(api_game)
 
