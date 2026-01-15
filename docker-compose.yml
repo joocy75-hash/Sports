@@ -38,6 +38,8 @@ services:
       - sports_state:/app/.state
       # 로그
       - sports_logs:/app/logs
+      # 환경 변수
+      - ./.env:/app/.env:ro
 
     # 포트 (API 서버 사용 시)
     ports:
